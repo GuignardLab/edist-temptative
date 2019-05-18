@@ -74,3 +74,11 @@ end = time.time()
 print('cython computed string dtw distance between %d sequences of length %d in %g seconds.' % (m, L, end - start))
 
 print('control: frobenius norm between dtw matrices: %g' % (np.sum(np.square(D - D2))))
+
+# test backtracing
+from dtw import dtw_backtrace
+
+left = ['a', 'b', 'c', 'd']
+right = ['a', 'c', 'd']
+
+print(dtw_backtrace(left, right, kron_distance))
