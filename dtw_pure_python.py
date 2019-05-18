@@ -19,14 +19,14 @@ def dtw_pure_python(x, y, delta):
 	# initialize last entry
 	D[-1, -1] = Delta[-1, -1]
 	# initialize last column
-	for i in range(len(x)-1):
+	for i in range(len(x)-2,-1,-1):
 		D[i,-1] = Delta[i,-1] + D[i+1,-1]
 	# initialize last row
-	for j in range(len(y)-1):
+	for j in range(len(y)-2,-1,-1):
 		D[-1,j] = Delta[-1,j] + D[-1,j+1]
 
-	for i in range(len(x)-1):
-		for j in range(len(y)-1):
+	for i in range(len(x)-2,-1,-1):
+		for j in range(len(y)-2,-1,-1):
 			D[i,j] = Delta[i,j] + min3(D[i+1,j+1], D[i,j+1], D[i+1,j])
 	return D[0,0]
 
