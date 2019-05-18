@@ -18,6 +18,8 @@ end = time.time()
 print('pure python computed dtw distance between %d sequences of length %d in %g seconds.' % (m, L, end - start))
 
 start = time.time()
-D2 = multi_dtw(seqs, seqs, l1_distance)
+D2 = multi_dtw(seqs, seqs, l1_distance, 4)
 end = time.time()
 print('cython computed dtw distance between %d sequences of length %d in %g seconds.' % (m, L, end - start))
+
+print('control: frobenius norm between dtw matrices: %g' % (np.sum(np.square(D - D2))))

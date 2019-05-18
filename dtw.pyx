@@ -1,6 +1,6 @@
 import numpy as np
 from cython.parallel import prange
-from joblib import Parallel, delayed
+import multiprocessing as mp
 
 def idx_producer(const int m, const int n):
 	cdef int i
@@ -9,21 +9,49 @@ def idx_producer(const int m, const int n):
 		for j in range(n):
 			yield (i,j)
 
+def dtw_with_idxs(x, y, delta, k, l):
+	return (k, l, dtw(x, y, delta))
 
-def multi_dtw(list Xs, list Ys, delta, int num_jobs = 2):
+def multi_dtw(list Xs, list Ys, delta, int num_jobs = 8):
 	# perform dynamic time warping on all pairwise sequence combinations
 	cdef int K = len(Xs)
 	cdef int L = len(Ys)
-	res = Parallel(n_jobs = num_jobs, pre_dispatch='1.5*n_jobs')(delayed(dtw)(Xs[k], Ys[l], delta) for (k,l) in idx_producer(K,L))
-	return np.reshape(res, (K, L))
+	# set up a parallel processing pool
+	pool = mp.Pool(num_jobs)
+	# set up the result matrix
+	D = np.zeros((K,L))
+	cdef double[:,:] D_view = D
+
+	# set up the dtw index function
+	# and the callback function
+	def callback(tpl):
+		D_view[tpl[0], tpl[1]] = tpl[2]
+
+	# start off all parallel processing jobs
+	for k in range(K):
+		for l in range(L):
+			pool.apply_async(dtw_with_idxs, args=(Xs[k], Ys[l], delta, k, l), callback=callback)
+
+	# wait for the jobs to finish
+	pool.close()
+	pool.join()
+
+	return D
+
+def delta_with_idxs(x, y, delta, i, j):
+	return (i, j, delta(x, y))
 
 def dtw(x, y, delta):
 	cdef int m = len(x)
 	cdef int n = len(y)
-	# First, compute all pairwise replacements using joblib for
-	# parallelization
-	res = Parallel(n_jobs = 2, pre_dispatch='1.5*n_jobs')(delayed(delta)(x[i], y[j]) for (i,j) in idx_producer(m,n))
-	Delta = np.reshape(res, (m, n))
+	# First, compute all pairwise replacements
+	Delta = np.zeros((m, n))
+	cdef double[:,:] Delta_view = Delta
+	cdef int i
+	cdef int j
+	for i in range(m):
+		for j in range(n):
+			Delta_view[i,j] = delta(x[i], y[j])
 
 	# Then, compute the dynamic time warping
 	# distance
