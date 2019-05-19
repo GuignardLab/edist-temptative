@@ -124,6 +124,17 @@ class Grammar:
 	def nonterminals(self):
 		return self._nonterminals
 
+	def validate(self, deltas):
+		for rep_op in self._reps:
+			if(rep_op not in deltas):
+				raise ValueError('costs for the ' + rep_op + ' operation are undefined!')
+		for del_op in self._dels:
+			if(del_op not in deltas):
+				raise ValueError('costs for the ' + del_op + ' operation are undefined!')
+		for ins_op in self._inss:
+			if(ins_op not in deltas):
+				raise ValueError('costs for the ' + ins_op + ' operation are undefined!')
+
 	def adjacency_lists(self):
 		# first, create maps from string to index representations
 		nont_map = string_to_index_map(self._nonterminals)

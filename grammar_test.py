@@ -21,6 +21,14 @@ class TestGrammarMethods(unittest.TestCase):
 		actual = grammar.string_to_index_map(lst)
 		self.assertEqual(expected, actual)
 
+	def test_string_to_index_list(self):
+		lst = ['A', 'B', 'A']
+		dct = {'A' : 0, 'B' : 1}
+		expected = [0, 1, 0]
+
+		actual = grammar.string_to_index_list(lst, dct)
+		self.assertEqual(expected, actual)
+
 	def test_string_to_index_tuple_list(self):
 		lst = [('a', 'A'), ('a', 'B'), ('b', 'A')]
 		op_dct = {'a' : 0, 'b' : 1}
