@@ -273,6 +273,7 @@ def dtw_backtrace_stochastic(x, y, delta):
 				else:
 					j += 1
 			else:
+				# only copying y[j] is co-optimal
 				i += 1
 		elif(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
 			# only copying x[i] is co-optimal
