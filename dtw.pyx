@@ -151,6 +151,8 @@ cdef double min3(double a, double b, double c) nogil:
 
 ####### BACKTRACING FUNCTIONS #######
 
+from trace import Trace
+
 cdef double _BACKTRACE_TOL = 1E-5
 
 def dtw_backtrace(x, y, delta):
@@ -170,34 +172,120 @@ def dtw_backtrace(x, y, delta):
 	D = np.zeros((m,n))
 	dtw_c(Delta, D)
 
+	cdef double[:,:] D_view = D
 	# Finally, compute the backtrace
-	#TODO this still requires debugging
 	i = 0
 	j = 0
-	trace = []
+	trace = Trace()
 	while(i < m - 1 and j < n - 1):
-		trace.append((i,j))
+		trace.append_operation(i, j)
 		# check which alignment option is co-optimal
-		if(D[i,j] < Delta[i,j] + D[i+1,j+1] + _BACKTRACE_TOL):
+		if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j+1]):
 			# replacement is co-optimal
 			i += 1
 			j += 1
 			continue
-		if(D[i,j] < Delta[i,j] + D[i+1,j] + _BACKTRACE_TOL):
+		if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j]):
 			# copying y[j] is co-optimal
 			i += 1
 			continue
-		if(D[i,j] < Delta[i,j] + D[i,j+1] + _BACKTRACE_TOL):
+		if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
 			# copying x[i] is co-optimal
 			j += 1
 			continue
 		# if we got here, nothing is co-optimal, which is an error
 		raise ValueError('Internal error: No option is co-optimal.')
 	while(i < m - 1):
-		trace.append((i,j))
+		trace.append_operation(i, j)
 		i += 1
 	while(j < n - 1):
-		trace.append((i,j))
+		trace.append_operation(i, j)
 		j += 1
-	trace.append((m-1, n-1))
+	trace.append_operation(m-1, n-1)
 	return trace
+
+import random
+
+def dtw_backtrace_stochastic(x, y, delta):
+	cdef int m = len(x)
+	cdef int n = len(y)
+	# First, compute all pairwise replacements
+	Delta = np.zeros((m, n))
+	cdef double[:,:] Delta_view = Delta
+	cdef int i
+	cdef int j
+	for i in range(m):
+		for j in range(n):
+			Delta_view[i,j] = delta(x[i], y[j])
+
+	# Then, compute the dynamic time warping
+	# distance
+	D = np.zeros((m,n))
+	dtw_c(Delta, D)
+
+	cdef double[:,:] D_view = D
+	# Finally, compute the backtrace
+	cdef int r
+	i = 0
+	j = 0
+	trace = Trace()
+	while(i < m - 1 and j < n - 1):
+		trace.append_operation(i, j)
+		# check which alignment options are co-optimal
+		if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j+1]):
+			# replacement is co-optimal
+			if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j]):
+				# replacement and copying y[j] are co-optimal
+				if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
+					# replacement, copying y[j], and copying x[i] are co-optimal
+					# Select whether to proceed in any direction uniformly at random
+					r = random.randrange(3)
+					if(r == 0):
+						i += 1
+						j += 1
+					elif(r == 1):
+						i += 1
+					else:
+						j += 1
+				else:
+					# select whether to proceed in j direction according to a
+					# coin toss
+					i += 1
+					j += random.randrange(2)
+			elif(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
+				# replacement and copying x[i] are co-optimal
+				# select whether to proceed in i direction according to a
+				# coin toss
+				i += random.randrange(2)
+				j += 1
+			else:
+				# only replacement is co-optimal
+				i += 1
+				j += 1
+		elif(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j]):
+			# copying y[j] is co-optimal
+			if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
+				# copying y[j] and copying x[i] are co-optimal
+				# Select whether to proceed in i or j direction uniformly at random
+				r = random.randrange(2)
+				if(r == 0):
+					i += 1
+				else:
+					j += 1
+			else:
+				i += 1
+		elif(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
+			# only copying x[i] is co-optimal
+			j += 1
+		else:
+			# if we got here, nothing is co-optimal, which is an error
+			raise ValueError('Internal error: No option is co-optimal.')
+	while(i < m - 1):
+		trace.append_operation(i, j)
+		i += 1
+	while(j < n - 1):
+		trace.append_operation(i, j)
+		j += 1
+	trace.append_operation(m-1, n-1)
+	return trace
+

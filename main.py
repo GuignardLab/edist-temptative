@@ -77,8 +77,12 @@ print('control: frobenius norm between dtw matrices: %g' % (np.sum(np.square(D -
 
 # test backtracing
 from dtw import dtw_backtrace
+from dtw import dtw_backtrace_stochastic
+from multiprocess import pairwise_computation_symmetric
 
 left = ['a', 'b', 'c', 'd']
 right = ['a', 'c', 'd']
-
-print(dtw_backtrace(left, right, kron_distance))
+trace = dtw_backtrace_stochastic(left, right, kron_distance)
+print(trace)
+print(trace.render(left, right, kron_distance))
+print('cost of trace: %g' % trace.cost(left, right, kron_distance))
