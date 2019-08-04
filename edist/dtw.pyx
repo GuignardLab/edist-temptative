@@ -1,3 +1,5 @@
+#!python
+#cython: language_level=3
 """
 Implements the dynamic time warping distance and its backtracing in cython.
 

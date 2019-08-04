@@ -1,3 +1,5 @@
+#!python
+#cython: language_level=3
 """
 Implements the tree edit distance and its backtracing in cython.
 

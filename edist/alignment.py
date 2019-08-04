@@ -30,6 +30,13 @@ __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 class Tuple:
     """ Models a single alignment entry with an edit operation name,
     a left index, and a right index.
+
+    Attributes:
+    _name:      The name of the corresponding edit operation.
+    _left:      The index of the aligned object on the left or -1 if no
+                such object exists.
+    _right:     The index of the aligned object on the right or -1 if no
+                such object exists.
     """
     def __init__(self, name, left, right):
         self._name = name
@@ -128,7 +135,13 @@ class Tuple:
         return isinstance(other, Tuple) and self._name == other._name and self._left == other._left and self._right == other._right
 
 class Alignment(list):
-    """ Models a list of tuples.
+    """ Models a list of tuples. Note that, by convention, an alignment between
+    sequences only permits tuples in lexicographically ascending order, i.e.
+    an alignment of nothing to 0, 0 to 1, and 1 to 2, should be stored in that
+    order and not as [(1, 2), (0, 1), (-1, 0)], for example. The same holds for
+    tree alignments, with the additional requirement that aligned indices must
+    respect the structure of the tree, i.e. if i is aligned to j and i2 to j2,
+    then i can only be a parent of i2 if j is a parent of j2 (and vice versa).
     """
     def __init__(self):
         list.__init__(self, [])
