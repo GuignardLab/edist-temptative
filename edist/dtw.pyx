@@ -22,7 +22,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
+import random
 import numpy as np
 from cython.parallel import prange
 from libc.math cimport sqrt
@@ -328,8 +328,6 @@ def dtw_backtrace(x, y, delta):
         j += 1
     alignment.append_tuple(m-1, n-1)
     return alignment
-
-import random
 
 def dtw_backtrace_stochastic(x, y, delta):
     """ Computes a co-optimal alignment between the two input sequences
