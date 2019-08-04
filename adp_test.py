@@ -21,6 +21,8 @@ class TestGrammarMethods(unittest.TestCase):
 		expected = 2.
 		actual = edit_distance(left, right, gra, deltas)
 		self.assertEqual(expected, actual)
+		actual = edit_distance(left, right, gra, kron_distance)
+		self.assertEqual(expected, actual)
 
 if __name__ == '__main__':
 	unittest.main()

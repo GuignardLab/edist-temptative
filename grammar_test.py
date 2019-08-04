@@ -1,10 +1,39 @@
+"""
+Tests ADP grammars.
+
+Copyright (C) 2019
+Benjamin Paaßen
+AG Machine Learning
+Bielefeld University
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import unittest
-import edist.grammar as grammar
+import edist.adp as adp
+
+__author__ = 'Benjamin Paaßen'
+__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__license__ = 'GPLv3'
+__version__ = '1.0.0'
+__maintainer__ = 'Benjamin Paaßen'
+__email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
 class TestGrammarMethods(unittest.TestCase):
 
 	def test_construction(self):
-		gra = grammar.Grammar('A', ['A'])
+		gra = adp.Grammar('A', ['A'])
 		gra.append_replacement('A', 'A', 'rep')
 		gra.append_deletion('A', 'A', 'del')
 		gra.append_insertion('A', 'A', 'ins')
@@ -18,7 +47,7 @@ class TestGrammarMethods(unittest.TestCase):
 		lst = ['A', 'B', 'C']
 		expected = {'A' : 0, 'B' : 1, 'C' : 2}
 
-		actual = grammar.string_to_index_map(lst)
+		actual = adp.string_to_index_map(lst)
 		self.assertEqual(expected, actual)
 
 	def test_string_to_index_list(self):
@@ -26,7 +55,7 @@ class TestGrammarMethods(unittest.TestCase):
 		dct = {'A' : 0, 'B' : 1}
 		expected = [0, 1, 0]
 
-		actual = grammar.string_to_index_list(lst, dct)
+		actual = adp.string_to_index_list(lst, dct)
 		self.assertEqual(expected, actual)
 
 	def test_string_to_index_tuple_list(self):
@@ -35,11 +64,11 @@ class TestGrammarMethods(unittest.TestCase):
 		nont_dct = {'A' : 0, 'B' : 1}
 		expected = [(0, 0), (0, 1), (1, 0)]
 
-		actual = grammar.string_to_index_tuple_list(lst, op_dct, nont_dct)
+		actual = adp.string_to_index_tuple_list(lst, op_dct, nont_dct)
 		self.assertEqual(expected, actual)
 
 	def test_adjacency_lists(self):
-		gra = grammar.Grammar('A', ['A'])
+		gra = adp.Grammar('A', ['A'])
 		gra.append_replacement('A', 'A', 'rep')
 		gra.append_deletion('A', 'A', 'del')
 		gra.append_insertion('A', 'A', 'ins')
