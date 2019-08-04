@@ -1,5 +1,5 @@
 import unittest
-import grammar
+import edist.grammar as grammar
 
 class TestGrammarMethods(unittest.TestCase):
 

@@ -1,6 +1,6 @@
 import unittest
-import grammar
-from adp import edit_distance
+import edist.grammar as grammar
+from edist.adp import edit_distance
 
 def kron_distance(x, y):
 	if(x == y):
