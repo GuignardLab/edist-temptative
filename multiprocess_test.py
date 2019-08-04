@@ -23,8 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 import time
 import numpy as np
+from edist.dtw import dtw
+from edist.dtw import dtw_string
+from edist.ted import ted
 import edist.multiprocess as multiprocess
-import edist.ted as ted
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2019, Benjamin Paaßen'
@@ -41,7 +43,29 @@ def kron_distance(x, y):
 
 class TestMultiprocess(unittest.TestCase):
 
-    def test_pairwise_distances(self):
+    def test_pairwise_dtw(self):
+        # consider three example sequences
+        Xs = ['abc', 'aabbcc', 'dbc']
+        D_expected = np.array([[0, 0, 1], [0, 0, 2], [1, 2, 0]], dtype=float)
+
+        # compute actual distances using dtw
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = dtw_string)
+        np.testing.assert_array_equal(D_expected, D_actual)
+
+        # compute again using symmetric function
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = dtw_string)
+        np.testing.assert_array_equal(D_expected, D_actual)
+
+        # compute again using general dtw and a delta function
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = dtw, delta = kron_distance)
+        np.testing.assert_array_equal(D_expected, D_actual)
+
+        # compute again using symmetric function
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = dtw, delta = kron_distance)
+        np.testing.assert_array_equal(D_expected, D_actual)
+
+
+    def test_pairwise_ted(self):
         # consider three example trees, one of them being empty
         x = []
         x_adj = []
@@ -58,21 +82,21 @@ class TestMultiprocess(unittest.TestCase):
         D_expected = np.array([[0, 5, 2], [5, 0, 5], [2, 5, 0]], dtype=int)
 
         # compute actual distances using the standard edit distance
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted.ted)
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted)
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted.ted)
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted)
         np.testing.assert_array_equal(D_expected, D_actual)
 
 
         # compute actual distances using the general edit distance
         D_expected = np.array([[0., 5., 2.], [5., 0., 5.], [2., 5., 0.]])
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted.ted, delta = kron_distance)
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted, delta = kron_distance)
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted.ted, delta = kron_distance)
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted, delta = kron_distance)
         np.testing.assert_array_equal(D_expected, D_actual)
 
 if __name__ == '__main__':
