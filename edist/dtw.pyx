@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import random
+import heapq
 import numpy as np
 from cython.parallel import prange
 from libc.math cimport sqrt
@@ -62,8 +63,7 @@ def dtw(x, y, delta):
         for j in range(n):
             Delta_view[i,j] = delta(x[i], y[j])
 
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
     return D[0,0]
@@ -95,8 +95,7 @@ def dtw_numeric(double[:] x, double[:] y):
                 Delta_view[i,j] = x[i] - y[j]
             else:
                 Delta_view[i,j] = y[j] - x[i]
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
     return D[0,0]
@@ -136,8 +135,7 @@ def dtw_manhattan(double[:,:] x, double[:,:] y):
                     Delta_view[i, j] -= diff
                 else:
                     Delta_view[i, j] += diff
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
     return D[0,0]
@@ -175,8 +173,7 @@ def dtw_euclidean(double[:,:] x, double[:,:] y):
                 diff = x[i,k] - y[j,k]
                 Delta_view[i, j] += diff * diff
             Delta_view[i, j] = sqrt(Delta_view[i, j])
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
     return D[0,0]
@@ -208,8 +205,7 @@ def dtw_string(str x, str y):
                 Delta_view[i, j] = 0.
             else:
                 Delta_view[i, j] = 1.
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
     return D[0,0]
@@ -292,8 +288,7 @@ def dtw_backtrace(x, y, delta):
         for j in range(n):
             Delta_view[i,j] = delta(x[i], y[j])
 
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
 
@@ -355,8 +350,7 @@ def dtw_backtrace_stochastic(x, y, delta):
         for j in range(n):
             Delta_view[i,j] = delta(x[i], y[j])
 
-    # Then, compute the dynamic time warping
-    # distance
+    # Then, compute the dynamic time warping distance
     D = np.zeros((m,n))
     dtw_c(Delta, D)
 
@@ -426,4 +420,139 @@ def dtw_backtrace_stochastic(x, y, delta):
         j += 1
     alignment.append_tuple(m-1, n-1)
     return alignment
+
+def dtw_backtrace_matrix(x, y, delta):
+    """ Computes a matrix, summarizing all co-optimal alignments between
+    x and y in a matrix P, where entry P[i, j] specifies the fraction of
+    co-optimal alignments in which node x[i] has been aligned with node y[j].
+
+    Args:
+    x:     a sequence of objects.
+    y:     another sequence of objects.
+    delta: a function that takes an element of x as first and an element of y
+           as second input and returns the distance between them.
+
+    Returns:
+    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
+       alignments in which node x[i] has been aligned with node y[j].
+    K: a matrix that contains the counts for all co-optimal alignments in which
+       node x[i] has been aligned with node y[j].
+    k: the number of co-optimal alignments overall, such that P = K / k.
+    """
+    cdef int m = len(x)
+    cdef int n = len(y)
+    if(m < 1 or n < 1):
+        raise ValueError('Dynamic time warping can not handle empty input sequences!')
+    # First, compute all pairwise replacements
+    Delta = np.zeros((m, n))
+    cdef double[:,:] Delta_view = Delta
+    cdef int i
+    cdef int j
+    for i in range(m):
+        for j in range(n):
+            Delta_view[i,j] = delta(x[i], y[j])
+
+    # Then, compute the dynamic time warping distance
+    D = np.zeros((m,n))
+    dtw_c(Delta, D)
+    cdef double[:,:] D_view = D
+
+    # compute the forward matrix Alpha, which contains the number of
+    # co-optimal alignment paths from cell [0, 0] to cell [i, j]
+    Alpha = np.zeros((m, n), dtype=int)
+    cdef long[:,:] Alpha_view = Alpha
+    Alpha_view[0, 0] = 1
+    # build a queue of cells which we still need to process
+    q = [(0, 0)]
+    # build a set which stores the already visited cells
+    visited = set()
+    # initialize temporary variables
+    cdef int found_coopt = False
+    cdef int k = 0
+    while(q):
+        (i, j) = heapq.heappop(q)
+        if((i, j) in visited):
+            continue
+        visited.add((i, j))
+        k = Alpha_view[i, j]
+        if(i == m-1):
+            if(j == n-1):
+                continue
+            # if we are at the end of the first sequence, we can only copy
+            # that end
+            Alpha_view[i, j+1] += k
+            heapq.heappush(q, (i, j+1))
+            continue
+        if(j == n-1):
+            # if we are at the end of the second sequence, we can only copy
+            # that end
+            Alpha_view[i+1, j] += k
+            heapq.heappush(q, (i+1, j))
+            continue
+        found_coopt = False
+        # check which alignment option is co-optimal
+        if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j+1]):
+            # replacement is co-optimal
+            Alpha_view[i+1, j+1] += k
+            heapq.heappush(q, (i+1, j+1))
+            found_coopt = True
+        if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i+1,j]):
+            # copying y[j] is co-optimal
+            Alpha_view[i+1, j] += k
+            heapq.heappush(q, (i+1, j))
+            found_coopt = True
+        if(D_view[i,j] + _BACKTRACE_TOL > Delta_view[i,j] + D_view[i,j+1]):
+            # copying x[i] is co-optimal
+            Alpha_view[i, j+1] += k
+            heapq.heappush(q, (i, j+1))
+            found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    # compute the backward matrix Beta, which contains the number of
+    # co-optimal alignment aths from cell [i, j] to cell [m-1, n-1]
+    Beta = np.zeros((m, n), dtype=int)
+    cdef long[:,:] Beta_view = Beta
+    Beta_view[m-1, n-1] = 1
+    # iterate in downward lexigraphic order over the visited cells
+    for (i, j) in sorted(visited, reverse = True):
+        k = Beta_view[i, j]
+        if(i == 0):
+            if(j == 0):
+                continue
+            # if we are at the start of the first sequence, we can only copy
+            # this start
+            Beta_view[i, j-1] += k
+            continue
+        if(j == 0):
+            # if we are at the start of the second sequence, we can only copy
+            # this start
+            Beta_view[i-1, j] += k
+            continue
+        found_coopt = False
+        # check which alignment option is co-optimal
+        if(D_view[i-1,j-1] + _BACKTRACE_TOL > Delta_view[i-1,j-1] + D_view[i,j]):
+            # replacement is co-optimal
+            Beta_view[i-1, j-1] += k
+            found_coopt = True
+        if(D_view[i-1,j] + _BACKTRACE_TOL > Delta_view[i-1,j] + D_view[i,j]):
+            # copying y[j] is co-optimal
+            Beta_view[i-1, j] += k
+            found_coopt = True
+        if(D_view[i,j-1] + _BACKTRACE_TOL > Delta_view[i,j-1] + D_view[i,j]):
+            # copying x[i] is co-optimal
+            Beta_view[i, j-1] += k
+            found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    if(Alpha_view[m-1, n-1] != Beta_view[0, 0]):
+        raise ValueError('Internal error: Alignment count in Alpha and Beta matrix did not agree; got %d versus %d' % (Alpha_view[m-1, n-1], Beta_view[0, 0]))
+
+    # compute a counting matrix specifying how often each alignment has
+    # occured by multiplying alpha and beta values.
+    K = Alpha * Beta
+    # compute the final summary matrix by dividing K by the overall number
+    # of co-optimal alignments
+    return np.array(K, dtype=float) / Alpha_view[m-1, n-1], K, Alpha_view[m-1, n-1]
 

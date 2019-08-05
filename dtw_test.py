@@ -111,6 +111,53 @@ class TestDTW(unittest.TestCase):
         actual = dtw.dtw(x, y, delta=kron_delta)
         np.testing.assert_almost_equal(actual, expected, 3)
 
+    def test_dtw_backtrace_matrix(self):
+
+        def kron_delta(x, y):
+            if(x == y):
+                return 0.
+            else:
+                return 1.
+
+        x = 'aaa'
+        y = 'aa'
+
+        # set up expected count matrix
+        expected_K = np.array([[5, 3, 1], [1, 3, 5]]).T
+        expected_k = 5
+
+        P, K, k = dtw.dtw_backtrace_matrix(x, y, kron_delta)
+
+        np.testing.assert_almost_equal(P, K / k, 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+        x = 'abc'
+        y = 'aa'
+
+        # set up expected count matrix
+        expected_K = np.array([[3, 1, 0], [1, 2, 3]]).T
+        expected_k = 3
+
+        P, K, k = dtw.dtw_backtrace_matrix(x, y, kron_delta)
+
+        np.testing.assert_almost_equal(P, K / k, 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+        x = 'abc'
+        y = 'bc'
+
+        # set up expected count matrix
+        expected_K = np.array([[1, 1, 0], [0, 0, 1]]).T
+        expected_k = 1
+
+        P, K, k = dtw.dtw_backtrace_matrix(x, y, kron_delta)
+
+        np.testing.assert_almost_equal(P, K / k, 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
 
 if __name__ == '__main__':
     unittest.main()
