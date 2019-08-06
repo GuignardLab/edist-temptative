@@ -21,6 +21,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import random
 from collections.abc import Callable
 import numpy as np
 from edist.alignment import Alignment
@@ -353,126 +354,41 @@ def edit_distance(x, y, grammar, deltas):
 
     Returns: The edit distance between x and y.
     """
-    # check if the given algebra is compatible with the given grammar.
-    if(isinstance(deltas, Callable)):
-        if(len(grammar._reps) > 1 or len(grammar._dels) > 1 or len(grammar._inss) > 1):
-            raise ValueError('If a function is given instead of an algebra, the grammar can only support a single operation of each type; otherwise, ambiguities arise.')
-        # generate a mock algebra that is definitely compatible
-        delta = deltas
-        deltas = {grammar._reps[0] : delta, grammar._dels[0] : delta, grammar._inss[0] : delta}
-    else:
-        grammar.validate(deltas)
-
-    cdef int m = len(x)
-    cdef int n = len(y)
-    # pre-compute all operation costs
-
-    # First, compute all pairwise replacements
-    cdef int K_rep = len(grammar._reps)
-    Deltas_rep = np.zeros((K_rep, m, n))
-    cdef double[:,:,:] Deltas_rep_view = Deltas_rep
-    cdef int i
-    cdef int j
-    cdef int k
-    for k in range(K_rep):
-        delta = deltas[grammar._reps[k]]
-        for i in range(m):
-            for j in range(n):
-                Deltas_rep_view[k, i, j] = delta(x[i], y[j])
-
-    # Then, compute all deletions
-    cdef int K_del = len(grammar._dels)
-    Deltas_del = np.zeros((K_del, m))
-    cdef double[:,:] Deltas_del_view = Deltas_del
-    for k in range(K_del):
-        delta = deltas[grammar._dels[k]]
-        for i in range(m):
-            Deltas_del_view[k, i] = delta(x[i], None)
-
-    # Then, compute all insertions
-    cdef int K_ins = len(grammar._inss)
-    Deltas_ins = np.zeros((K_ins, n))
-    cdef double[:,:] Deltas_ins_view = Deltas_ins
-    for k in range(K_ins):
-        delta = deltas[grammar._inss[k]]
-        for j in range(n):
-            Deltas_ins_view[k, j] = delta(None, y[j])
-
-    # retrieve the adjacency list representation for
-    # the grammar
-    start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = grammar.adjacency_lists()
-
-    # Initialize the dynamic programming matrices
-    # for all nonterminals
-    cdef int R = len(grammar._nonterminals)
-    Ds = np.full((R, m+1, n+1), np.inf)
-    cdef double[:,:,:] Ds_view = Ds
-    # initialize last entry for all accepting symbols
-    cdef int nont
-    for nont in accpt_idxs:
-        Ds_view[nont, m, n] = 0.
-
-    # initialize last column for all symbols
-    cdef int r
-    cdef int s
-    for i in range(m-1,-1,-1):
-        for r in range(R):
-            for (k, s) in adj_del[r]:
-                Ds_view[r, i, n] = Deltas_del_view[k, i] + Ds_view[s, i+1, n]
-
-    # initialize last row for all symbols
-    for j in range(n-1,-1,-1):
-        for r in range(R):
-            for (k, s) in adj_ins[r]:
-                Ds_view[r, m, j] = Deltas_ins_view[k, j] + Ds_view[s, m, j+1]
-
-    # perform the remaining computation
-    cdef double min_cost
-    cdef double current_cost
-    for i in range(m-1,-1,-1):
-        for j in range(n-1,-1,-1):
-            for r in range(R):
-                min_cost = np.inf
-                # first, consider replacements
-                for (k, s) in adj_rep[r]:
-                    current_cost = Deltas_rep_view[k, i, j] + Ds_view[s, i+1, j+1]
-                    if(current_cost < min_cost):
-                        min_cost = current_cost
-                # then, consider deletions
-                for (k, s) in adj_del[r]:
-                    current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
-                    if(current_cost < min_cost):
-                        min_cost = current_cost
-                # finally, consider insertions
-                for (k, s) in adj_ins[r]:
-                    current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
-                    if(current_cost < min_cost):
-                        min_cost = current_cost
-                # set new entry to minimum
-                Ds_view[r, i, j] = min_cost
-
-    # return the cost at the start symbol
+    # apply the internal edit distance function
+    Ds, _, _, _, start_idx, _, _, _, _ = _edit_distance(x, y, grammar, deltas)
     return Ds[start_idx, 0, 0]
 
-####### BACKTRACING FUNCTIONS #######
+def _edit_distance(x, y, grammar, deltas):
+    """ Computes the edit distance including all internal variables
+    necessary during computation.
 
-cdef double _BACKTRACE_TOL = 1E-5
-
-def backtrace(x, y, grammar, deltas):
-    """ Computes a co-optimal alignment between the two input sequences
-    x and y, given the given ADP grammar and algebra. This mechanism
-    is deterministic and will always prefer replacements over other options.
-
-    Args:
-    x:       a sequence of objects.
-    y:       another sequence of objects.
-    grammar: An ADP grammar. Refer to the documentation above for more
-             information.
+    Returns:
+    x:       A list of objects of length m.
+    y:       Another list of objects of length n.
+    grammar: An ADP grammar with R nonterminals, K_rep replacements, K_del
+             deletions, and K_ins insertions. Refer to the documentation
+             above for more information.
     deltas:  An algebra, i.e. a mapping from operation names to distance
              functions OR a single distance function if the grammar supports
              only a single replacement, deletion, and insertion operation.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns:
+    Ds: A R x m+1 x n+1 tensor containing the dynamic programming matrices
+        for all nonterminals.
+    Deltas_rep: A K_rep x m x n tensor containing the replacement costs for
+        all replacements.
+    Deltas_del: A K_rep x m matrix containing the deletion costs for
+        all deletions.
+    Deltas_ins: A K_ins x n matrix containing the insertion costs for
+        all insertions.
+    start_idx:  The index of the starting nonterminal.
+    accpt_idxs: The indices of accepting nonterminals.
+    adj_rep:    An adjacency list representation of the grammar rules for
+                replacement operations.
+    adj_del:    An adjacency list representation of the grammar rules for
+                deletion operations.
+    adj_ins:    An adjacency list representation of the grammar rules for
+                insertion operations.
     """
     # check if the given algebra is compatible with the given grammar.
     if(isinstance(deltas, Callable)):
@@ -572,6 +488,46 @@ def backtrace(x, y, grammar, deltas):
                 # set new entry to minimum
                 Ds_view[r, i, j] = min_cost
 
+    return Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins
+
+
+####### BACKTRACING FUNCTIONS #######
+
+cdef double _BACKTRACE_TOL = 1E-5
+
+def backtrace(x, y, grammar, deltas):
+    """ Computes a co-optimal alignment between the two input sequences
+    x and y, given the given ADP grammar and algebra. This mechanism
+    is deterministic and will always prefer replacements over other options.
+
+    Args:
+    x:       a sequence of objects.
+    y:       another sequence of objects.
+    grammar: An ADP grammar. Refer to the documentation above for more
+             information.
+    deltas:  An algebra, i.e. a mapping from operation names to distance
+             functions OR a single distance function if the grammar supports
+             only a single replacement, deletion, and insertion operation.
+
+    Returns: a co-optimal alignment.Alignment between x and y.
+    """
+    # apply the internal edit distance function
+    Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)
+
+    # declare c variables
+    cdef int m = len(x)
+    cdef int n = len(y)
+    cdef int i
+    cdef int j
+    cdef int k
+    cdef int r
+    cdef int s
+
+    cdef double[:,:,:] Ds_view = Ds
+    cdef double[:,:, :] Deltas_rep_view = Deltas_rep
+    cdef double[:,:] Deltas_del_view = Deltas_del
+    cdef double[:,:] Deltas_ins_view = Deltas_ins
+
     # then, perform the backtracing
     r = start_idx
     i = 0
@@ -648,4 +604,136 @@ def backtrace(x, y, grammar, deltas):
                 break
         if(not found_coopt):
             raise ValueError('Internal error: No option is co-optimal.')
+    if(r not in accpt_idxs):
+        raise ValueError('Ended in a non-accepting nonterminal')
     return alignment
+
+def backtrace_stochastic(x, y, grammar, deltas):
+    """ Computes a co-optimal alignment between the two input sequences
+    x and y, given the given ADP grammar and algebra. This mechanism
+    is stochastic and will return a random alignment.
+
+    Note that the randomness does _not_ produce a uniform distribution over
+    all co-optimal alignments because reandom choices at the start of the
+    alignment process dominate. If you wish to characterize the overall
+    distribution accurately, use sed_backtrace_matrix instead.
+
+    Args:
+    x:       a sequence of objects.
+    y:       another sequence of objects.
+    grammar: An ADP grammar. Refer to the documentation above for more
+             information.
+    deltas:  An algebra, i.e. a mapping from operation names to distance
+             functions OR a single distance function if the grammar supports
+             only a single replacement, deletion, and insertion operation.
+
+    Returns: a co-optimal alignment.Alignment between x and y.
+    """
+    # apply the internal edit distance function
+    Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)
+
+    # declare c variables
+    cdef int m = len(x)
+    cdef int n = len(y)
+    cdef int i
+    cdef int j
+    cdef int k
+    cdef int r
+    cdef int s
+    cdef int c
+    cdef int op
+
+    cdef double[:,:,:] Ds_view = Ds
+    cdef double[:,:,:] Deltas_rep_view = Deltas_rep
+    cdef double[:,:] Deltas_del_view = Deltas_del
+    cdef double[:,:] Deltas_ins_view = Deltas_ins
+
+    # then, perform the backtracing
+    r = start_idx
+    i = 0
+    j = 0
+    cdef int found_coopt
+    alignment = Alignment()
+    while(i < m and j < n):
+        # check which alignment option is co-optimal
+        # check all possible replacements
+        coopts = []
+        for (k, s) in adj_rep[r]:
+            current_cost = Deltas_rep_view[k, i, j] + Ds_view[s, i+1, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # replacement is co-optimal
+                coopts.append((0, k, s))
+        # check all possible deletions
+        for (k, s) in adj_del[r]:
+            current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # deletion is co-optimal
+                coopts.append((1, k, s))
+        # check all possible insertions
+        for (k, s) in adj_ins[r]:
+            current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                coopts.append((2, k, s))
+        if(not coopts):
+            raise ValueError('Internal error: No option is co-optimal.')
+        # select a random operation
+        c = random.randrange(len(coopts))
+        # apply the corresponding operation
+        op = coopts[c][0]
+        k  = coopts[c][1]
+        r  = coopts[c][2]
+        if(op == 0):
+            # apply replacement
+            alignment.append_tuple(i, j, grammar._reps[k])
+            i += 1
+            j += 1
+        elif(op == 1):
+            # apply deletion
+            alignment.append_tuple(i, -1, grammar._dels[k])
+            i += 1
+        elif(op == 2):
+            # apply insertion
+            alignment.append_tuple(-1, j, grammar._inss[k])
+            j += 1
+    # delete all demaining nodes
+    while(i < m):
+        coopts = []
+        # check all possible deletions
+        for (k, s) in adj_del[r]:
+            current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # deletion is co-optimal
+                coopts.append((k, s))
+        if(not coopts):
+            raise ValueError('Internal error: No option is co-optimal.')
+        # select a random deletion
+        c = random.randrange(len(coopts))
+        # apply the corresponding operation
+        k  = coopts[c][0]
+        r  = coopts[c][1]
+        alignment.append_tuple(i, -1, grammar._dels[k])
+        i += 1
+
+    # insert all demaining nodes
+    while(j < n):
+        coopts = []
+        # check all possible insertions
+        for (k, s) in adj_ins[r]:
+            current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                coopts.append((k, s))
+        if(not coopts):
+            raise ValueError('Internal error: No option is co-optimal.')
+        # select a random insertion
+        c = random.randrange(len(coopts))
+        # apply the corresponding operation
+        k  = coopts[c][0]
+        r  = coopts[c][1]
+        alignment.append_tuple(-1, j, grammar._inss[k])
+        j += 1
+    if(r not in accpt_idxs):
+        raise ValueError('Ended in a non-accepting nonterminal')
+    return alignment
+
