@@ -243,6 +243,11 @@ def sed_backtrace_stochastic(x, y, delta):
     x and y, given the element-wise distance function delta. This mechanism
     is stochastic and will return a random co-optimal alignment.
 
+    Note that the randomness does _not_ produce a uniform distribution over
+    all co-optimal alignments because reandom choices at the start of the
+    alignment process dominate. If you wish to characterize the overall
+    distribution accurately, use sed_backtrace_matrix instead. 
+
     Args:
     x:     a sequence of objects.
     y:     another sequence of objects.

@@ -76,6 +76,46 @@ class TestSED(unittest.TestCase):
         actual_ali = sed.sed_backtrace_stochastic(x, y, kron_delta)
         self.assertEqual(expected_ali, actual_ali)
 
+    def test_sed_backtrace_stochastic(self):
+        # test an ambiguous case and check whether the stochastic
+        # backtracing does select all possible alignments with the
+        # expected distribution
+
+        def kron_delta(x, y):
+            if(x == y):
+                return 0.
+            else:
+                return 1.
+
+        x = 'aaa'
+        y = 'aa'
+
+        expected_alis = [Alignment(), Alignment(), Alignment()]
+        expected_alis[0].append_tuple(0, 0)
+        expected_alis[0].append_tuple(1, 1)
+        expected_alis[0].append_tuple(2, -1)
+        expected_alis[1].append_tuple(0, 0)
+        expected_alis[1].append_tuple(1, -1)
+        expected_alis[1].append_tuple(2, 1)
+        expected_alis[2].append_tuple(0, -1)
+        expected_alis[2].append_tuple(1, 0)
+        expected_alis[2].append_tuple(2, 1)
+
+        T = 100
+        histogram = np.zeros(len(expected_alis))
+        for t in range(T):
+            actual_ali = sed.sed_backtrace_stochastic(x, y, kron_delta)
+            self.assertTrue(actual_ali in expected_alis)
+            a = expected_alis.index(actual_ali)
+            histogram[a] += 1
+        histogram /= T
+
+        # the last option will dominate the distribution because
+        # there is no choice left if we decide to delete a in the
+        # beginning.
+        expected_histogram = np.array([0.25, 0.25, 0.5])
+        np.testing.assert_allclose(histogram, expected_histogram, atol=0.1)
+
     def test_sed_backtrace_matrix(self):
 
         def kron_delta(x, y):
