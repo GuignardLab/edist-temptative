@@ -68,17 +68,45 @@ class TestGrammarMethods(unittest.TestCase):
 		self.assertEqual(expected, actual)
 
 	def test_adjacency_lists(self):
-		gra = adp.Grammar('A', ['A'])
+		gra = adp.Grammar('A', ['A', 'B', 'C'])
 		gra.append_replacement('A', 'A', 'rep')
-		gra.append_deletion('A', 'A', 'del')
-		gra.append_insertion('A', 'A', 'ins')
-		expected = [[(0,0)]]
+		gra.append_deletion('A', 'B', 'del')
+		gra.append_insertion('A', 'C', 'ins')
+		gra.append_replacement('B', 'A', 'rep')
+		gra.append_deletion('B', 'B', 'skdel')
+		gra.append_insertion('B', 'C', 'ins')
+		gra.append_replacement('C', 'A', 'rep')
+		gra.append_insertion('C', 'C', 'skins')
 
 		start_idx, accpt_idxs, actual_reps, actual_dels, actual_inss = gra.adjacency_lists()
 		self.assertEqual(0, start_idx)
-		self.assertEqual([0], accpt_idxs)
+		self.assertEqual([0, 1, 2], accpt_idxs)
+		expected = [[(0,0)], [(0,0)], [(0,0)]]
 		self.assertEqual(expected, actual_reps)
+		expected = [[(0,1)], [(1,1)], []]
 		self.assertEqual(expected, actual_dels)
+		expected = [[(0,2)], [(0,2)], [(1, 2)]]
+		self.assertEqual(expected, actual_inss)
+
+	def test_inverse_adjacency_lists(self):
+		gra = adp.Grammar('A', ['A', 'B', 'C'])
+		gra.append_replacement('A', 'A', 'rep')
+		gra.append_deletion('A', 'B', 'del')
+		gra.append_insertion('A', 'C', 'ins')
+		gra.append_replacement('B', 'A', 'rep')
+		gra.append_deletion('B', 'B', 'skdel')
+		gra.append_insertion('B', 'C', 'ins')
+		gra.append_replacement('C', 'A', 'rep')
+		gra.append_insertion('C', 'C', 'skins')
+
+		start_idx, accpt_idxs, actual_reps, actual_dels, actual_inss = gra.inverse_adjacency_lists()
+		self.assertEqual(0, start_idx)
+		self.assertEqual([0, 1, 2], accpt_idxs)
+		expected = [[(0,0), (0, 1), (0, 2)], [], []]
+		self.assertEqual(expected, actual_reps)
+		expected = [[], [(0,0), (1, 1)], []]
+		self.assertEqual(expected, actual_dels)
+		expected = [[], [], [(0, 0), (0, 1), (1, 2)]]
 		self.assertEqual(expected, actual_inss)
 
 
