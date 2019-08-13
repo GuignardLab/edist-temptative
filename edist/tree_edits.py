@@ -60,7 +60,12 @@ class Edit(abc.ABC):
 
 
 class Replacement(Edit):
+    """ Replaces the label of node self._index with self._label.
 
+    Attributes:
+    _index: The index of the tree node to which this edit is applied.
+    _label: The new label for the self._indexth node.
+    """
     def __init__(self, index, label):
         self._index = index
         self._label = label
@@ -99,7 +104,13 @@ class Replacement(Edit):
 
 
 class Deletion(Edit):
+    """ Deletes node self._index and raises all its children to the parent
+        node. Note that deleting the root node of the tree results in a
+        forest instead of a tree.
 
+    Attributes:
+    _index: The index of the tree node to which this edit is applied.
+    """
     def __init__(self, index):
         self._index = index
 
@@ -179,7 +190,18 @@ def get_roots(adj):
 
 
 class Insertion(Edit):
+    """ Inserts a new node with label self._label as self._child_index'th
+        child of node self._parent_index and uses the next self._num_children
+        right siblings of itself as its children.
 
+    Attributes:
+    _parent_index: The index of the tree node to which we add a new child.
+    _label:        The label for the new child node.
+    _child_index:  The new node will be the _child_indexth child of node
+                   _parent_index.
+    _num_children: The number of right siblings that will be used as new
+                   grandchildren.
+    """
     def __init__(self, parent_index, child_index, label, num_children = 0):
         self._parent_index = parent_index
         self._label = label
@@ -284,7 +306,8 @@ class Insertion(Edit):
 
 
 class Script(list, Edit):
-
+    """ A list of Edits.
+    """
     def __init__(self, lst = []):
         list.__init__(self, lst)
 
@@ -317,9 +340,9 @@ class Script(list, Edit):
             self[e].apply_in_place(nodes, adj)
 
 
-def alignment_to_script(trace, x_nodes, x_adj, y_nodes, y_adj):
-    """ Converts the given trace into an edit script which maps the given
-    tree x to the given tree y such that all operations in the trace
+def alignment_to_script(alignment, x_nodes, x_adj, y_nodes, y_adj):
+    """ Converts the given alignment into an edit script which maps the given
+    tree x to the given tree y such that all tuples in the alignment
     correspond to exactly one edit in the script.
 
     Note that the order of operations does change because the script will
@@ -331,15 +354,15 @@ def alignment_to_script(trace, x_nodes, x_adj, y_nodes, y_adj):
     https://arxiv.org/abs/1805.06869
 
     Args:
-    trace:   a Trace object which maps between the given trees x and y.
+    alignment: an Alignment object which maps between the given trees x and y.
     x_nodes: the node list of tree x.
     x_adj:   the adjacency list of tree x.
     y_nodes: the node list of tree y.
     y_adj:   the adjacency list of tree y.
 
     Returns: A Script object script such that script.apply(x_nodes, x_adj) =
-             (y_nodes, y_adj) where every trace entry has one corresponding
-             edit.
+             (y_nodes, y_adj) where every Tuple in the alignment has one
+             corresponding edit.
     """
     # in a first pass over the sequence, we disentangle replacements,
     # deletions, and insertions and convert the replacement right away because
@@ -347,7 +370,7 @@ def alignment_to_script(trace, x_nodes, x_adj, y_nodes, y_adj):
     script = Script()
     dels = []
     inss = []
-    for op in trace:
+    for op in alignment:
         if(op._left >= 0):
             if(op._right >= 0):
                 # if both left and right index are defined, we have a

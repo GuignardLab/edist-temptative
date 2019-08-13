@@ -509,7 +509,7 @@ def _ted_backtrace(const long[:] x_orl, const long[:] y_orl, double[:,:] Delta, 
 
 # the standard edit distance with kronecker distance
 
-def standard_ted(x_nodes, x_adj, y_nodes, y_adj):
+def standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     """ Computes the standard tree edit distance between the trees x and y,
     each described by a list of nodes and an adjacency list adj, where adj[i]
     is a list of indices pointing to children of node i.
