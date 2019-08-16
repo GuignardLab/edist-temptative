@@ -515,7 +515,7 @@ def dtw_backtrace_matrix(x, y, delta):
             raise ValueError('Internal error: No option is co-optimal.')
 
     # compute the backward matrix Beta, which contains the number of
-    # co-optimal alignment aths from cell [i, j] to cell [m-1, n-1]
+    # co-optimal alignment paths from cell [i, j] to cell [m-1, n-1]
     Beta = np.zeros((m, n), dtype=int)
     cdef long[:,:] Beta_view = Beta
     Beta_view[m-1, n-1] = 1

@@ -21,6 +21,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import heapq
 import random
 from collections.abc import Callable
 import numpy as np
@@ -338,6 +339,55 @@ class Grammar:
             ins_adj.append(string_to_index_tuple_list(rule_entry._inss, inss_map, nont_map))
         return start_idx, accpt_idxs, rep_adj, del_adj, ins_adj
 
+    def inverse_adjacency_lists(self):
+        """ Returns the inverse adjacency list format of this grammar.
+
+        Returns:
+        start_idx:  The index of the starting nonterminal symbol.
+        accpt_idxs: A list of indices for all accepting nonterminals.
+        rep_adj:    An adjacency list covering all replacement operations,
+                    i.e. a list where the i-th entry contains all rules
+                    of the form A -> rep B, where B is the i-th nonterminal
+                    and (A, rep) is represented as a tuple tuples of
+                    operation index and nonterminal index.
+        del_adj:    An adjacency list covering all deletion operations,
+                    i.e. a list where the i-th entry contains all rules
+                    of the form A -> del B, where B is the i-th nonterminal
+                    and (A, del) is represented as a tuple tuples of
+                    operation index and nonterminal index.
+        ins_adj:    An adjacency list covering all insertion operations,
+                    i.e. a list where the i-th entry contains all rules
+                    of the form A -> ins B, where B is the i-th nonterminal
+                    and (A, ins) is represented as a tuple tuples of
+                    operation index and nonterminal index.
+        """
+        # first, create maps from string to index representations
+        nont_map = string_to_index_map(self._nonterminals)
+        reps_map = string_to_index_map(self._reps)
+        dels_map = string_to_index_map(self._dels)
+        inss_map = string_to_index_map(self._inss)
+        # translate the start symbol to an index
+        start_idx = nont_map[self._start]
+        # translate the accepting symbol list
+        accpt_idxs = string_to_index_list(self._accepting, nont_map)
+        # then, create an adjacency list representation for all replacements,
+        # deletions, and insertions separately
+        rep_adj = []
+        del_adj = []
+        ins_adj = []
+        for nont in self._nonterminals:
+            rep_adj.append([])
+            del_adj.append([])
+            ins_adj.append([])
+        for A in self._nonterminals:
+            rule_entry = self._rules[A]
+            for (delta, B) in rule_entry._reps:
+                rep_adj[nont_map[B]].append((reps_map[delta], nont_map[A]))
+            for (delta, B) in rule_entry._dels:
+                del_adj[nont_map[B]].append((dels_map[delta], nont_map[A]))
+            for (delta, B) in rule_entry._inss:
+                ins_adj[nont_map[B]].append((inss_map[delta], nont_map[A]))
+        return start_idx, accpt_idxs, rep_adj, del_adj, ins_adj
 
 def edit_distance(x, y, grammar, deltas):
     """ Computes the edit distance between two sequences x and y, based on
@@ -737,3 +787,254 @@ def backtrace_stochastic(x, y, grammar, deltas):
         raise ValueError('Ended in a non-accepting nonterminal')
     return alignment
 
+
+def backtrace_matrix(x, y, grammar, deltas):
+    """ Computes three tensors, P_rep, P_del, and P_ins, which summarize all
+    co-optimal alignments between x and y.
+
+    In particular, P_rep[k, i, j] specifies the fraction of co-optimal
+    alignments in which node x[i] has been replaced with node y[j] using
+    operation grammar._reps[k]. Accordingly, P_del[k, i] specifies the
+    fraction of co-optimal alignments in which x[i] has been deleted using
+    operation grammar._dels[k], and P_ins[k, j] specifies the fraction of
+    co-optimal alignments in which y[j] has been inserted using operation
+    grammar._inss[k].
+
+    Args:
+    x:     a sequence of objects.
+    y:     another sequence of objects.
+    grammar: An ADP grammar. Refer to the documentation above for more
+             information.
+    deltas:  An algebra, i.e. a mapping from operation names to distance
+             functions OR a single distance function if the grammar supports
+             only a single replacement, deletion, and insertion operation.
+
+    Returns:
+    P_rep: a tensor where P_rep[k, i, j] specifies the fraction of co-optimal
+           alignments in which node x[i] has been replaced with node y[j] using
+           operation grammar._reps[k].
+    P_del: a matrix where P_del[k, i] specifies the fraction of co-optimal
+           alignments in which x[i] has been deleted using operation
+           grammar._dels[k].
+    P_ins: a matrix where P_ins[k, j] specifies the fraction of co-optimal
+           alignments in which y[j] has been inserted using operation
+           grammar._inss[k].
+    k:     the number of co-optimal alignments.
+    """
+    # apply the internal edit distance function
+    Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)
+
+    # declare c variables
+    cdef int m = len(x)
+    cdef int n = len(y)
+    cdef int i
+    cdef int j
+    cdef int k
+    cdef int r
+    cdef int s
+    cdef int c
+    cdef int op
+
+    cdef double[:,:,:] Ds_view = Ds
+    cdef double[:,:,:] Deltas_rep_view = Deltas_rep
+    cdef double[:,:] Deltas_del_view = Deltas_del
+    cdef double[:,:] Deltas_ins_view = Deltas_ins
+
+    # compute the forward tensor Alpha, which contains the number of
+    # co-optimal alignment paths from cell [start_idx, 0, 0] to cell [r, i, j]
+    Alpha = np.zeros((len(grammar._nonterminals), m+1, n+1), dtype=int)
+    cdef long[:,:, :] Alpha_view = Alpha
+    Alpha_view[start_idx, 0, 0] = 1
+    # build a queue of cells which we still need to process
+    q = [(start_idx, 0, 0)]
+    # build a set which stores the already visited cells
+    visited = set()
+    # initialize temporary variables
+    cdef int found_coopt = False
+    cdef long num_coopts = 0
+    while(q):
+        (r, i, j) = heapq.heappop(q)
+        if((i, j) in visited):
+            continue
+        visited.add((r, i, j))
+        num_coopts = Alpha_view[r, i, j]
+        found_coopt = False
+        if(i == m):
+            if(j == n):
+                continue
+            # if we are at the end of the first sequence, we can only insert
+            # check all possible insertions
+            for (k, s) in adj_ins[r]:
+                current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+                if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                    # insertion is co-optimal
+                    Alpha_view[s, i, j+1] += num_coopts
+                    heapq.heappush(q, (s, i, j+1))
+                    found_coopt = True
+            if(not found_coopt):
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        if(j == n):
+            # if we are at the end of the second sequence, we can only delete
+            # check all possible deletions
+            for (k, s) in adj_del[r]:
+                current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+                if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                    # deletion is co-optimal
+                    Alpha_view[s, i+1, j] += num_coopts
+                    heapq.heappush(q, (s, i+1, j))
+                    found_coopt = True
+            if(not found_coopt):
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        # check which alignment option is co-optimal
+        # check all possible replacements
+        for (k, s) in adj_rep[r]:
+            current_cost = Deltas_rep_view[k, i, j] + Ds_view[s, i+1, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # replacement is co-optimal
+                Alpha_view[s, i+1, j+1] += num_coopts
+                heapq.heappush(q, (s, i+1, j+1))
+                found_coopt = True
+        # check all possible deletions
+        for (k, s) in adj_del[r]:
+            current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # deletion is co-optimal
+                Alpha_view[s, i+1, j] += num_coopts
+                heapq.heappush(q, (s, i+1, j))
+                found_coopt = True
+        # check all possible insertions
+        for (k, s) in adj_ins[r]:
+            current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                Alpha_view[s, i, j+1] += num_coopts
+                heapq.heappush(q, (s, i, j+1))
+                found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    # compute the backward matrix Beta, which contains the number of
+    # co-optimal alignment paths from cell [s, i, j] to cells [accepting, m, n]
+    Beta = np.zeros((len(grammar._nonterminals), m+1, n+1), dtype=int)
+    cdef long[:,:,:] Beta_view = Beta
+    for r in accpt_idxs:
+        Beta_view[r, m, n] = 1
+    # retrieve the inverse adjacency list format of the grammar
+    _, _, inv_adj_rep, inv_adj_del, inv_adj_ins = grammar.inverse_adjacency_lists()
+
+    # iterate in downward lexigraphic order over the visited cells
+    for (s, i, j) in sorted(visited, key = (lambda tpl : (tpl[1], tpl[2], tpl[0])), reverse = True):
+        num_coopts = Beta_view[s, i, j]
+        found_coopt = False
+        if(i == 0):
+            if(j == 0):
+                continue
+            # if we are at the start of the first sequence, we can only insert
+            # check all possible insertions
+            for (k, r) in inv_adj_ins[s]:
+                current_cost = Deltas_ins_view[k, j-1] + Ds_view[s, i, j]
+                if(Ds_view[r, i, j-1] + _BACKTRACE_TOL > current_cost):
+                    # insertion is co-optimal
+                    Beta_view[r, i, j-1] += num_coopts
+                    found_coopt = True
+            if(not found_coopt):
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        if(j == 0):
+            # if we are at the start of the second sequence, we can only delete
+            # check all possible deletions
+            for (k, r) in inv_adj_del[s]:
+                current_cost = Deltas_del_view[k, i-1] + Ds_view[s, i, j]
+                if(Ds_view[r, i-1, j] + _BACKTRACE_TOL > current_cost):
+                    # insertion is co-optimal
+                    Beta_view[r, i-1, j] += num_coopts
+                    found_coopt = True
+            if(not found_coopt):
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        # check which alignment option is co-optimal
+        # check all possible replacements
+        for (k, r) in inv_adj_rep[s]:
+            current_cost = Deltas_rep_view[k, i-1, j-1] + Ds_view[s, i, j]
+            if(Ds_view[r, i-1, j-1] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                Beta_view[r, i-1, j-1] += num_coopts
+                found_coopt = True
+        # check all possible deletions
+        for (k, r) in inv_adj_del[s]:
+            current_cost = Deltas_del_view[k, i-1] + Ds_view[s, i, j]
+            if(Ds_view[r, i-1, j] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                Beta_view[r, i-1, j] += num_coopts
+                found_coopt = True
+        # check all possible insertions
+        for (k, r) in inv_adj_ins[s]:
+            current_cost = Deltas_ins_view[k, j-1] + Ds_view[s, i, j]
+            if(Ds_view[r, i, j-1] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                Beta_view[r, i, j-1] += num_coopts
+                found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    if(np.sum(Alpha[:, m, n]) != Beta_view[start_idx, 0, 0]):
+        raise ValueError('Internal error: Alignment count in Alpha and Beta matrix did not agree; got %d versus %d' % (np.sum(Alpha[:, m, n]), Beta_view[start_idx, 0, 0]))
+
+    # compute the output matrices, specifying how often each operation was used
+    K_rep = np.zeros((len(grammar._reps), m, n), dtype=int)
+    cdef long[:,:,:] K_rep_view = K_rep
+    K_del = np.zeros((len(grammar._dels), m), dtype=int)
+    cdef long[:,:] K_del_view = K_del
+    K_ins = np.zeros((len(grammar._inss), n), dtype=int)
+    cdef long[:,:] K_ins_view = K_ins
+    for (r, i, j) in visited:
+        num_coopts = Alpha_view[r, i, j]
+        if(i == m):
+            if(j == n):
+                continue
+            # if we are at the end of the first sequence, we can only insert
+            # check all possible insertions
+            for (k, s) in adj_ins[r]:
+                current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+                if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                    # insertion is co-optimal
+                    K_ins_view[k, j] += num_coopts * Beta_view[s, i, j+1]
+            continue
+        if(j == n):
+            # if we are at the end of the second sequence, we can only delete
+            # check all possible deletions
+            for (k, s) in adj_del[r]:
+                current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+                if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                    # deletion is co-optimal
+                    K_del_view[k, i] += num_coopts * Beta_view[s, i+1, j]
+            continue
+        # check which alignment option is co-optimal
+        # check all possible replacements
+        for (k, s) in adj_rep[r]:
+            current_cost = Deltas_rep_view[k, i, j] + Ds_view[s, i+1, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # replacement is co-optimal
+                K_rep_view[k, i, j] += num_coopts * Beta_view[s, i+1, j+1]
+        # check all possible deletions
+        for (k, s) in adj_del[r]:
+            current_cost = Deltas_del_view[k, i] + Ds_view[s, i+1, j]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # deletion is co-optimal
+                K_del_view[k, i] += num_coopts * Beta_view[s, i+1, j]
+        # check all possible insertions
+        for (k, s) in adj_ins[r]:
+            current_cost = Deltas_ins_view[k, j] + Ds_view[s, i, j+1]
+            if(Ds_view[r, i, j] + _BACKTRACE_TOL > current_cost):
+                # insertion is co-optimal
+                K_ins_view[k, j] += num_coopts * Beta_view[s, i, j+1]
+
+    # compute the final summary matrices by dividing K by the overall number
+    # of co-optimal alignments
+    num_coopts = Beta_view[start_idx, 0, 0]
+    P_rep = K_rep.astype(float) / num_coopts
+    P_del = K_del.astype(float) / num_coopts
+    P_ins = K_ins.astype(float) / num_coopts
+    return P_rep, P_del, P_ins, num_coopts
