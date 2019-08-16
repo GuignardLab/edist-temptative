@@ -286,6 +286,33 @@ class TestTED(unittest.TestCase):
         # check result
         self.assertEqual(expected_ali, actual_ali)
 
+    def test_standard_ted_backtrace_matrix(self):
+        # consider two example trees
+        # the tree a(b(c, d), e)
+        y = ['a', 'b', 'c', 'd', 'e']
+        y_adj = [[1, 4], [2, 3], [], [], []]
+        # and the tree f(g)
+        z = ['f', 'g']
+        z_adj = [[1], []]
+
+        # set up expected count matrix
+        expected_K = np.zeros((len(y), len(z)), dtype=int)
+        expected_K[0, 0] = 4
+        expected_K[1, 0] = 2
+        expected_K[1, 1] = 1
+        expected_K[2, 1] = 2
+        expected_K[3, 1] = 2
+        expected_K[4, 1] = 1
+        expected_k = 6
+
+        # compute actual matrix
+        P, K, k = ted.standard_ted_backtrace_matrix(y, y_adj, z, z_adj)
+
+        np.testing.assert_almost_equal(P[:len(y), :][:, :len(z)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(z)], axis=0), np.ones(len(z)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(y),:], axis=1), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
 
     def test_speed(self):
         m = 300

@@ -548,7 +548,7 @@ def ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = N
     return P, K, k
 
 def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, Ks, long[:,:] Kappa, int k, int l):
-    """ Internal function; call ted_backtrace instead.
+    """ Internal function; call ted_backtrace_matrix instead.
 
         Performs the backtracing for the subtree rooted at k in x versus the
         subtree rooted at l in y.
@@ -1100,3 +1100,287 @@ def _standard_ted_backtrace(const long[:] x_orl, const long[:] y_orl, const long
     while(j < j_max):
         ali.append_tuple(-1, j)
         j += 1
+
+def standard_ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None):
+    """ Computes a matrix P where entry P[i, j] represents how often node
+    i in tree x was aligned with node j in tree y in co-optimal alignments
+    according to the standard tree edit distance.
+
+    Note that we assume a proper depth-first-search order of adj, i.e. for
+    every node i, the following indices are all part of the subtree rooted at
+    i until we hit the index of i's right sibling or the end of the tree.
+
+    Args:
+    x_nodes: a list of nodes for tree x
+             OR a tuple of the form (x_nodes, x_adj).
+    x_adj:   an adjacency list for tree x
+             OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: a list of nodes for tree y.
+    y_adj:   an adjacency list for tree y.
+
+    Returns:
+    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
+       alignments in which node x[i] has been aligned with node y[j].
+       P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
+       the fraction of insertions of node y[j].
+    K: a matrix that contains the counts for all co-optimal alignments in which
+       node x[i] has been aligned with node y[j].
+    k: the number of co-optimal alignments overall, such that P = K / k.
+    """
+
+    if(isinstance(x_nodes, tuple)):
+        x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
+
+    m = len(x_nodes)
+    n = len(y_nodes)
+    # compute tree edit distance first
+    x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
+
+    # set up a dictionary to sparsely store the counting matrices for all subtrees
+    Ks = {}
+    # set up a matrix to store the number of co-optimal alignments for all subtrees
+    Kappa = np.zeros((m, n), dtype=int)
+
+    # start the recursive backtrace computation
+    _standard_ted_backtrace_matrix(x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree, Ks, Kappa, 0, 0)
+
+    # extract results
+    K = Ks[(0,0)]
+    k = Kappa[0, 0]
+    # construct P
+    P = np.zeros((m+1, n+1))
+    P[:m, :][:, :n] = K
+    P[:m, n] = k - np.sum(K, axis=1)
+    P[m, :n] = k - np.sum(K, axis=0)
+    P /= k
+    # return results
+    return P, K, k
+
+def _standard_ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const long[:,:] Delta, long[:,:] D, const long[:,:] D_tree, Ks, long[:,:] Kappa, int k, int l):
+    """ Internal function; call standard_ted_backtrace_matrix instead.
+
+        Performs the backtracing for the subtree rooted at k in x versus the
+        subtree rooted at l in y.
+    """
+
+    # get the sizes of the current subtrees
+    cdef int m_k = x_orl[k] - k + 1
+    cdef int n_l = y_orl[l] - l + 1
+    if(m_k == 1 and n_l == 1):
+        # if this is a pair of leaves, the handling is trivial
+        Kappa[k, l] = 1
+        Ks[(k,l)] = np.array([[1]], dtype=int)
+        return
+
+    cdef int m = len(x_orl)
+    cdef int n = len(y_orl)
+
+    # compute the forward matrix Alpha, which contains the number of
+    # co-optimal alignment paths from cell [k, l, k, l] to cell [k, l, i, j]
+    Alpha = np.zeros((m_k+1, n_l+1), dtype=int)
+    cdef long[:, :] Alpha_view = Alpha
+    # we start with a single path
+    Alpha_view[0, 0] = 1
+    cdef int i
+    cdef int j
+    cdef long[:,:] D_kl
+    if(k == 0 and l == 0):
+        D_kl = D
+    else:
+        D_kl = np.zeros((m_k+1, n_l+1), dtype=int)
+
+    if(k > 0 or l > 0):
+        # if we are not considering the entire tree, we always use a
+        # replacement as first action to avoid duplicates with other options
+        Alpha_view[1, 1] = 1
+        # re-compute the edit costs for the current subtree combination
+        D_kl[m_k][n_l] = D[x_orl[k], y_orl[l]]
+        D_kl[0][0]     = D_tree[k][l] + D[x_orl[k], y_orl[l]]
+        for i in range(m_k-1, 0, -1):
+            D_kl[i, n_l] = 1 + D_kl[i+1, n_l]
+        # then, initialize the last row
+        for j in range(n_l-1, 0, -1):
+            D_kl[m_k, j] = 1 + D_kl[m_k, j+1]
+        # finally, compute the remaining forest edit distances
+        for i in range(m_k-1, 0, -1):
+            for j in range(n_l-1, 0, -1):
+                if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
+                    # if we consider a complete subtree, we can re-use
+                    # the tree edit distance values we computed in the
+                    # forward pass
+                    D_kl[i,j] = D_tree[k+i,l+j] + D_kl[m_k][n_l]
+                else:
+                    # if we do _not_ consider a complete subtree,
+                    # replacements are only possible between entire
+                    # subtrees, which we have to consider in
+                    # recurrence
+                    D_kl[i,j] = min3_int(D_tree[k+i,l+j] + D_kl[x_orl[k+i]-k+1,y_orl[l+j]-l+1], # tree replacement
+                                  1 + D_kl[i+1,j], # deletion
+                                  1 + D_kl[i,j+1]  # insertion
+                             )
+        # start our processing queue at 1,1
+        q = [(1, 1)]
+    else:
+        # start our processing queue at 0,0
+        q = [(0, 0)]
+    # build a set which stores the already visited cells
+    visited = set()
+    # search along co-optimal paths until the processing queue is empty
+    cdef int found_coopt
+    cdef int itar
+    cdef int jtar
+    while(q):
+        (i, j) = heapq.heappop(q)
+        if((i, j) in visited):
+            continue
+        visited.add((i, j))
+        num_coopts = Alpha_view[i, j]
+        if(i == m_k):
+            if(j == n_l):
+                continue
+            # if we are at the end of the first subtree, we can only insert
+            if(D_kl[i, j] == 1 + D_kl[i,j+1]):
+                Alpha_view[i, j+1] += num_coopts
+                heapq.heappush(q, (i, j+1))
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        if(j == n_l):
+            # if we are at the end of the second subtree, we can only delete
+            if(D_kl[i, j] == 1 + D_kl[i+1, j]):
+                Alpha_view[i+1, j] += num_coopts
+                heapq.heappush(q, (i+1, j))
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+
+        found_coopt = False
+        if(D_kl[i, j] == 1 + D_kl[i+1, j]):
+            # deletion is co-optimal
+            Alpha_view[i+1, j] += num_coopts
+            heapq.heappush(q, (i+1, j))
+            found_coopt = True
+        if(D_kl[i, j] == 1 + D_kl[i,j+1]):
+            # insertion is co-optimal
+            Alpha_view[i, j+1] += num_coopts
+            heapq.heappush(q, (i, j+1))
+            found_coopt = True
+        if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
+            # If we are at the root of postfix-subtrees for subtree k and l,
+            # we consider the standard replacement case
+            if(D_kl[i,j] == Delta[k+i,l+j] + D_kl[i+1,j+1]):
+                # replacement is co-optimal
+                Alpha_view[i+1, j+1] += num_coopts
+                heapq.heappush(q, (i+1, j+1))
+                found_coopt = True
+        else:
+            itar = x_orl[k+i]-k+1
+            jtar = y_orl[l+j]-l+1
+            if(D_kl[i, j] == D_tree[k+i,l+j] + D_kl[itar, jtar]):
+                # Otherwise, we consider the case where we replace the entire
+                # subtree rooted at i with the entire subtree rooted at j.
+                # For this case, we call the backtracing recursively
+                if((k+i, l+j) not in Ks):
+                    _standard_ted_backtrace_matrix(x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree, Ks, Kappa, k+i, l+j)
+                # then, we can use the number of paths during recursion,
+                # multiplied with the number of coopts we have accumulated so
+                # far
+                Alpha_view[itar][jtar] += num_coopts * Kappa[k+i,l+j]
+                heapq.heappush(q, (itar, jtar))
+                found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    # store the number of co-optimals for this subtree
+    Kappa[k, l] = Alpha_view[m_k, n_l]
+
+    # next, we compute the backward counting matrix, Beta, which contains the
+    # number of co-optimal alignment paths from cell [k, l, i, j] to cell
+    # [k, l, m_k, n_l]
+    Beta = np.zeros((m_k+1, n_l+1), dtype=int)
+    cdef long[:, :] Beta_view = Beta
+    Beta_view[m_k, n_l] = 1
+    # add (0,0) to the visited set to ensure consistency because we started
+    # at (1, 1) during forward computation
+    visited.add((0,0))
+    # iterate in downward lexigraphic order over the visited cells
+    for (i, j) in sorted(visited, reverse = True):
+        if(i == m_k):
+            if(j == n_l):
+                continue
+            # if we are at the end of the first subtree, we can only insert
+            if(D_kl[i, j] == 1 + D_kl[i,j+1]):
+                Beta_view[i, j] += Beta_view[i, j+1]
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        if(j == n_l):
+            # if we are at the end of the second subtree, we can only delete
+            if(D_kl[i, j] == 1 + D_kl[i+1, j]):
+                Beta_view[i, j] += Beta_view[i+1,j]
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+
+        found_coopt = False
+        if(D_kl[i, j] == 1 + D_kl[i+1, j]):
+            # deletion is co-optimal
+            Beta_view[i, j] += Beta_view[i+1, j]
+            found_coopt = True
+        if(D_kl[i, j] == 1 + D_kl[i,j+1]):
+            # insertion is co-optimal
+            Beta_view[i, j] += Beta_view[i, j+1]
+            found_coopt = True
+        if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
+            # If we are at the root of postfix-subtrees for subtree k and l,
+            # we consider the standard replacement case
+            if(D_kl[i,j] == Delta[k+i,l+j] + D_kl[i+1,j+1]):
+                # replacement is co-optimal
+                Beta_view[i, j] += Beta_view[i+1, j+1]
+                found_coopt = True
+        else:
+            itar = x_orl[k+i]-k+1
+            jtar = y_orl[l+j]-l+1
+            if(D_kl[i, j] == D_tree[k+i,l+j] + D_kl[itar, jtar]):
+                # if we replace an entire subtree, we need to consider the
+                # number of co-optimal alignments between those, which is
+                # listed in Kappa
+                Beta_view[i][j] += Beta_view[itar][jtar] * Kappa[k+i,l+j]
+                found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    if(Alpha_view[m_k, n_l] != Beta_view[0, 0]):
+        raise ValueError('Internal error: Alignment count in Alpha and Beta matrix did not agree; got %d versus %d' % (Alpha_view[m_k, n_l], Beta_view[0, 0]))
+
+    # initialize the counting matrix for the current subtree
+    K = np.zeros((m_k, n_l), dtype=int)
+    cdef long[:,:] K_view = K
+    cdef long[:,:] K_ij
+    cdef int i2
+    cdef int j2
+    # compute content of K
+    for (i, j) in visited:
+        if(i == m_k or j == n_l):
+            continue
+        if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
+            # If we are at the root of postfix-subtrees for subtree k and l
+            # _or_ if replacements are as expensive as deletions plus insertions,
+            # we count replacements directly
+            if(D_kl[i,j] == Delta[k+i,l+j] + D_kl[i+1,j+1]):
+                K_view[i, j] += Alpha_view[i,j] * Beta_view[i+1,j+1]
+        else:
+            itar = x_orl[k+i]-k+1
+            jtar = y_orl[l+j]-l+1
+            if(D_kl[i, j] == D_tree[k+i,l+j] + D_kl[itar, jtar]):
+                # if we replace an entire subtree, we need to consider the
+                # number of co-optimal alignments between those, which is
+                # listed in Kappa
+                num_coopts = Alpha_view[i,j] * Beta_view[itar,jtar]
+                K_ij = Ks[(k+i, l+j)]
+                for i2 in range(i, itar):
+                    for j2 in range(j, jtar):
+                        K_view[i2, j2] += K_ij[i2 - i, j2 - j] * num_coopts
+
+    # store the newly computed K matrix
+    Ks[(k, l)] = K
