@@ -146,6 +146,26 @@ class TestTED(unittest.TestCase):
         # check result
         self.assertEqual(expected_ali, actual_ali)
 
+    def test_ted_backtrace_matrix(self):
+        # consider two example trees
+        # the tree a(b(c, d), e)
+        y = ['a', 'b', 'c', 'd', 'e']
+        y_adj = [[1, 4], [2, 3], [], [], []]
+        # and the tree f(g)
+        z = ['f', 'g']
+        z_adj = [[1], []]
+
+        # as character distance, use the kronecker delta
+        def kron_distance(x, y):
+            if(x == y):
+                return 0.
+            else:
+                return 1.
+
+        # compute actual matrix
+        _, _, k = ted.ted_backtrace_matrix(y, y_adj, z, z_adj, kron_distance)
+        self.assertEqual(6, k)
+
     def test_standard_ted(self):
         # consider three example trees, one of them being empty
         x = []
