@@ -36,7 +36,9 @@ __version__ = '1.0.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
-# The tree edit distance with custom delta
+###################################
+# Edit Distance with Custom Delta #
+###################################
 
 def ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     """ Computes the tree edit distance between the trees x and y, each
@@ -63,20 +65,35 @@ def ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     """
     if(delta is None):
         return float(standard_ted(x_nodes, x_adj, y_nodes, y_adj))
+
+    if(isinstance(x_nodes, tuple)):
+        x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
+    # the number of nodes in both trees
+    cdef int m = len(x_nodes)
+    cdef int n = len(y_nodes)
+    # if either tree is empty, we can only delete/insert all nodes in the
+    # non-empty tree.
+    cdef double d = 0
+    if(m == 0):
+        for j in range(n):
+            d += delta(None, y_nodes[j])
+        return d
+    if(n == 0):
+        for i in range(m):
+            d += delta(x_nodes[i], None)
+        return d
+    # otherwise, compute the actual tree edit distance
     _, _, _, _, _, _, D_tree = _ted(x_nodes, x_adj, y_nodes, y_adj, delta)
     return D_tree[0,0]
 
 def _ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
-
+    """ Internal function; call ted instead. """
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
 
     # the number of nodes in both trees
     cdef int m = len(x_nodes)
     cdef int n = len(y_nodes)
-    # if both trees are empty, the distance is necessarily zero.
-    if(m == 0 and n == 0):
-        return 0.
     # An array to store all edit costs for replacements, deletions, and
     # insertions
     Delta = np.zeros((m+1, n+1))
@@ -94,13 +111,6 @@ def _ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     for j in range(n):
         Delta_view[m,j] = delta(None, y_nodes[j])
 
-    # if either tree is empty, we can only delete/insert all nodes in the
-    # non-empty tree.
-    if(m == 0):
-        return np.sum(Delta[0,:])
-    if(n == 0):
-        return np.sum(Delta[:,0])
-
     # Compute the keyroots and outermost right leaves for both trees.
     x_orl = outermost_right_leaves(x_adj)
     x_kr  = keyroots(x_orl)
@@ -114,6 +124,14 @@ def _ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     return x_orl, x_kr, y_orl, y_kr, Delta, D_forest, D_tree
 
 def extract_from_tuple_input(x, y):
+    """ Assumes that both x and y are tuples and unpacks those tuples
+
+    Args:
+    x: a tuple
+    y: another tuple
+
+    Returns x[0], x[1], y[0], y[1]
+    """
     if(len(x) != 2):
         raise ValueError('If the first input is a tuple, it needs to contain exactly two elements, a node list and an adjacency list')
     if(not isinstance(y, tuple)):
@@ -339,8 +357,9 @@ cdef double min3(double a, double b, double c) nogil:
         else:
             return c
 
-
-# backtracing function
+#########################
+# Backtracing Functions #
+#########################
 
 cdef double _BACKTRACE_TOL = 1E-5
 
@@ -380,7 +399,9 @@ def ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     return ali
 
 def _ted_backtrace(const long[:] x_orl, const long[:] y_orl, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, ali, int k, int l):
-    """ Performs the backtracing for the subtree rooted at k in x versus the
+    """ Internal function; call ted_backtrace instead.
+
+        Performs the backtracing for the subtree rooted at k in x versus the
         subtree rooted at l in y.
     """
     # recompute the dynamic programming matrix for the current subtree
@@ -395,10 +416,10 @@ def _ted_backtrace(const long[:] x_orl, const long[:] y_orl, const double[:,:] D
         # note that D[i_max, j_max] is already correctly initialized
         # initialize the last column
         for i in range(i_max-1, k-1, -1):
-            D[i, j_max] = 1 + D[i+1, j_max]
+            D[i, j_max] = Delta[i, n] + D[i+1, j_max]
         # then, initialize the last row
         for j in range(j_max-1, l-1, -1):
-            D[i_max, j] = 1 + D[i_max, j+1]
+            D[i_max, j] = Delta[m, j] + D[i_max, j+1]
         # finally, compute the remaining forest edit distances
         for i in range(i_max-1, k-1, -1):
             for j in range(j_max-1, l-1, -1):
@@ -497,7 +518,9 @@ def ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = N
     x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree = _ted(x_nodes, x_adj, y_nodes, y_adj, delta)
 
 
-# the standard edit distance with kronecker distance
+###############################################
+# Standard Edit Distance with Kronecker Delta #
+###############################################
 
 def standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     """ Computes the standard tree edit distance between the trees x and y,
@@ -528,10 +551,6 @@ def standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
 
     Returns: the standard tree edit distance between x and y as an integer.
     """
-    _, _, _, _, _, _, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
-    return D_tree[0,0]
-
-def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
 
@@ -544,6 +563,18 @@ def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
         return n
     if(n == 0):
         return m
+
+    _, _, _, _, _, _, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
+    return D_tree[0,0]
+
+def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
+    """ Internal function; call standard_ted instead. """
+    if(isinstance(x_nodes, tuple)):
+        x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
+
+    # the number of nodes in both trees
+    cdef int m = len(x_nodes)
+    cdef int n = len(y_nodes)
     # An array to store which pairs of symbols in x and y are equal
     Delta = np.zeros((m, n), dtype=int)
     cdef long[:,:] Delta_view = Delta
@@ -674,8 +705,9 @@ cdef long min3_int(long a, long b, long c) nogil:
         else:
             return c
 
-
-# backtracing function
+#########################
+# Backtracing Functions #
+#########################
 
 def standard_ted_backtrace(x_nodes, x_adj, y_nodes, y_adj):
     """ Computes the standard tree edit distance between the trees x and y,
@@ -707,15 +739,17 @@ def standard_ted_backtrace(x_nodes, x_adj, y_nodes, y_adj):
 
     Returns: a co-optimal alignment to edit x into y.
     """
-    x_orl, x_kr, y_orl, y_kr, Delta, D_forest, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
+    x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
     # initialize the alignment
     ali = Alignment()
     # start backtracing recursively
-    _standard_ted_backtrace(x_orl, y_orl, Delta_view, D_view, D_tree_view, ali, 0, 0)
+    _standard_ted_backtrace(x_orl, y_orl, Delta, D, D_tree, ali, 0, 0)
     return ali
 
 def _standard_ted_backtrace(const long[:] x_orl, const long[:] y_orl, const long[:,:] Delta, long[:,:] D, const long[:,:] D_tree, ali, int k, int l):
-    """ Performs the backtracing for the subtree rooted at k in x versus the
+    """ Internal function; call standard_ted_backtrace instead.
+
+        Performs the backtracing for the subtree rooted at k in x versus the
         subtree rooted at l in y.
     """
     # recompute the dynamic programming matrix for the current subtree
