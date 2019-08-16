@@ -134,6 +134,8 @@ class TestSED(unittest.TestCase):
         P, K, k = sed.sed_backtrace_matrix(x, y, kron_delta)
 
         np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 
@@ -147,6 +149,8 @@ class TestSED(unittest.TestCase):
         P, K, k = sed.sed_backtrace_matrix(x, y, kron_delta)
 
         np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 
@@ -160,6 +164,8 @@ class TestSED(unittest.TestCase):
         P, K, k = sed.sed_backtrace_matrix(x, y, kron_delta)
 
         np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 

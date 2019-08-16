@@ -512,11 +512,12 @@ def sed_backtrace_matrix(x, y, delta):
 
     # compute the final summary matrix by dividing K by the overall number
     # of co-optimal alignments and completing the last row and column
+    k = Alpha_view[m, n]
     P = np.zeros((m+1, n+1))
     P[:m, :][:, :n] = K
-    P[:m, n] = np.sum(K, axis=1)
-    P[m, :n] = np.sum(K, axis=0)
-    P /= Alpha_view[m, n]
+    P[:m, n] = k - np.sum(K, axis=1)
+    P[m, :n] = k - np.sum(K, axis=0)
+    P /= k
 
-    return P, K, Alpha_view[m, n]
+    return P, K, k
 
