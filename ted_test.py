@@ -162,9 +162,54 @@ class TestTED(unittest.TestCase):
             else:
                 return 1.
 
+        # set up expected count matrix
+        expected_K = np.zeros((len(y), len(z)), dtype=int)
+        expected_K[0, 0] = 4
+        expected_K[1, 0] = 2
+        expected_K[1, 1] = 1
+        expected_K[2, 1] = 2
+        expected_K[3, 1] = 2
+        expected_K[4, 1] = 1
+        expected_k = 6
+
         # compute actual matrix
-        _, _, k = ted.ted_backtrace_matrix(y, y_adj, z, z_adj, kron_distance)
-        self.assertEqual(6, k)
+        P, K, k = ted.ted_backtrace_matrix(y, y_adj, z, z_adj, kron_distance)
+
+        np.testing.assert_almost_equal(P[:len(y), :][:, :len(z)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(z)], axis=0), np.ones(len(z)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(y),:], axis=1), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+        # now, test a case where duplicates may occur due to equivalent costs
+        def equi_dist(x, y):
+            if(x is None or y is None):
+                return 0.5
+            if(x == y):
+                return 0.
+            else:
+                return 1.
+        x = ['a', 'b']
+        x_adj = [[1], []]
+        y = ['c', 'd']
+        y_adj = [[1], []]
+
+        # set up expected count matrix
+        expected_K = np.zeros((len(y), len(z)), dtype=int)
+        expected_K[0, 0] = 2
+        expected_K[0, 1] = 1
+        expected_K[1, 0] = 1
+        expected_K[1, 1] = 2
+        expected_k = 6
+
+        # compute actual matrix
+        P, K, k = ted.ted_backtrace_matrix(x, x_adj, y, y_adj, equi_dist)
+
+        np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
 
     def test_standard_ted(self):
         # consider three example trees, one of them being empty

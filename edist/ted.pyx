@@ -522,18 +522,30 @@ def ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = N
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
 
+    m = len(x_nodes)
+    n = len(y_nodes)
+    # compute tree edit distance first
     x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree = _ted(x_nodes, x_adj, y_nodes, y_adj, delta)
 
     # set up a dictionary to sparsely store the counting matrices for all subtrees
     Ks = {}
     # set up a matrix to store the number of co-optimal alignments for all subtrees
-    Kappa = np.zeros((len(x_nodes), len(y_nodes)), dtype=int)
+    Kappa = np.zeros((m, n), dtype=int)
 
     # start the recursive backtrace computation
-
     _ted_backtrace_matrix(x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree, Ks, Kappa, 0, 0)
-    # TODO Construct P
-    return None, Ks[(0, 0)], Kappa[0, 0]
+
+    # extract results
+    K = Ks[(0,0)]
+    k = Kappa[0, 0]
+    # construct P
+    P = np.zeros((m+1, n+1))
+    P[:m, :][:, :n] = K
+    P[:m, n] = k - np.sum(K, axis=1)
+    P[m, :n] = k - np.sum(K, axis=0)
+    P /= k
+    # return results
+    return P, K, k
 
 def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, Ks, long[:,:] Kappa, int k, int l):
     """ Internal function; call ted_backtrace instead.
@@ -548,7 +560,7 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
     if(m_k == 1 and n_l == 1):
         # if this is a pair of leaves, the handling is trivial
         Kappa[k, l] = 1
-        Ks[(k,l)] = np.array([[1.]])
+        Ks[(k,l)] = np.array([[1]], dtype=int)
         return
 
     cdef int m = len(x_orl)
@@ -562,17 +574,19 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
     Alpha_view[0, 0] = 1
     cdef int i
     cdef int j
+    cdef double[:,:] D_kl
     if(k == 0 and l == 0):
-        D_kl_raw = D
+        D_kl = D
     else:
-        D_kl_raw = np.zeros((m_k+1, n_l+1))
-    cdef double[:,:] D_kl = D_kl_raw
+        D_kl = np.zeros((m_k+1, n_l+1))
 
     if(k > 0 or l > 0):
-        # if we are not at the start, we definitely start with a replacement
+        # if we are not considering the entire tree, we always use a
+        # replacement as first action to avoid duplicates with other options
         Alpha_view[1, 1] = 1
         # re-compute the edit costs for the current subtree combination
         D_kl[m_k][n_l] = D[x_orl[k], y_orl[l]]
+        D_kl[0][0]     = D_tree[k][l] + D[x_orl[k], y_orl[l]]
         for i in range(m_k-1, 0, -1):
             D_kl[i, n_l] = Delta[k+i, n] + D_kl[i+1, n_l]
         # then, initialize the last row
@@ -642,6 +656,11 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
             Alpha_view[i, j+1] += num_coopts
             heapq.heappush(q, (i, j+1))
             found_coopt = True
+        if(Delta[k+i, l+j] + _BACKTRACE_TOL > Delta[k+i,n] + Delta[m,l+j]):
+            # if replacement is as expensive as deletion and insertion, we need
+            # to prevent counting replacements because we would overcount
+            # otherwise
+            continue
         if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
             # If we are at the root of postfix-subtrees for subtree k and l,
             # we consider the standard replacement case
@@ -671,13 +690,101 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
     # store the number of co-optimals for this subtree
     Kappa[k, l] = Alpha_view[m_k, n_l]
 
-    # TODO BETA
+    # next, we compute the backward counting matrix, Beta, which contains the
+    # number of co-optimal alignment paths from cell [k, l, i, j] to cell
+    # [k, l, m_k, n_l]
+    Beta = np.zeros((m_k+1, n_l+1), dtype=int)
+    cdef long[:, :] Beta_view = Beta
+    Beta_view[m_k, n_l] = 1
+    # add (0,0) to the visited set to ensure consistency because we started
+    # at (1, 1) during forward computation
+    visited.add((0,0))
+    # iterate in downward lexigraphic order over the visited cells
+    for (i, j) in sorted(visited, reverse = True):
+        if(i == m_k):
+            if(j == n_l):
+                continue
+            # if we are at the end of the first subtree, we can only insert
+            if(D_kl[i, j] + _BACKTRACE_TOL > Delta[m,l+j] + D_kl[i,j+1]):
+                Beta_view[i, j] += Beta_view[i, j+1]
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+        if(j == n_l):
+            # if we are at the end of the second subtree, we can only delete
+            if(D_kl[i, j] + _BACKTRACE_TOL > Delta[k+i,n] + D_kl[i+1, j]):
+                Beta_view[i, j] += Beta_view[i+1,j]
+            else:
+                raise ValueError('Internal error: No option is co-optimal.')
+            continue
+
+        found_coopt = False
+        if(D_kl[i, j] + _BACKTRACE_TOL > Delta[k+i,n] + D_kl[i+1, j]):
+            # deletion is co-optimal
+            Beta_view[i, j] += Beta_view[i+1, j]
+            found_coopt = True
+        if(D_kl[i, j] + _BACKTRACE_TOL > Delta[m,l+j] + D_kl[i,j+1]):
+            # insertion is co-optimal
+            Beta_view[i, j] += Beta_view[i, j+1]
+            found_coopt = True
+        if(Delta[k+i, l+j] + _BACKTRACE_TOL > Delta[k+i,n] + Delta[m,l+j]):
+            # if replacement is as expensive as deletion and insertion, we need
+            # to prevent counting replacements because we would overcount
+            # otherwise
+            continue
+        if(x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]):
+            # If we are at the root of postfix-subtrees for subtree k and l,
+            # we consider the standard replacement case
+            if(D_kl[i,j] + _BACKTRACE_TOL > Delta[k+i,l+j] + D_kl[i+1,j+1]):
+                # replacement is co-optimal
+                Beta_view[i, j] += Beta_view[i+1, j+1]
+                found_coopt = True
+        else:
+            itar = x_orl[k+i]-k+1
+            jtar = y_orl[l+j]-l+1
+            if(D_kl[i, j] + _BACKTRACE_TOL > D_tree[k+i,l+j] + D_kl[itar, jtar]):
+                # if we replace an entire subtree, we need to consider the
+                # number of co-optimal alignments between those, which is
+                # listed in Kappa
+                Beta_view[i][j] += Beta_view[itar][jtar] * Kappa[k+i,l+j]
+                found_coopt = True
+        if(not found_coopt):
+            raise ValueError('Internal error: No option is co-optimal.')
+
+    if(Alpha_view[m_k, n_l] != Beta_view[0, 0]):
+        raise ValueError('Internal error: Alignment count in Alpha and Beta matrix did not agree; got %d versus %d' % (Alpha_view[m_k, n_l], Beta_view[0, 0]))
 
     # initialize the counting matrix for the current subtree
     K = np.zeros((m_k, n_l), dtype=int)
     cdef long[:,:] K_view = K
-    # TODO compute contents of K
-    # store it
+    cdef long[:,:] K_ij
+    cdef int i2
+    cdef int j2
+    # compute content of K
+    for (i, j) in visited:
+        if(i == m_k or j == n_l):
+            continue
+        if((x_orl[k+i] == x_orl[k] and y_orl[l+j] == y_orl[l]) or
+           (Delta[k+i, l+j] + _BACKTRACE_TOL > Delta[k+i,n] + Delta[m,l+j])):
+            # If we are at the root of postfix-subtrees for subtree k and l
+            # _or_ if replacements are as expensive as deletions plus insertions,
+            # we count replacements directly
+            if(D_kl[i,j] + _BACKTRACE_TOL > Delta[k+i,l+j] + D_kl[i+1,j+1]):
+                K_view[i, j] += Alpha_view[i,j] * Beta_view[i+1,j+1]
+        else:
+            itar = x_orl[k+i]-k+1
+            jtar = y_orl[l+j]-l+1
+            if(D_kl[i, j] + _BACKTRACE_TOL > D_tree[k+i,l+j] + D_kl[itar, jtar]):
+                # if we replace an entire subtree, we need to consider the
+                # number of co-optimal alignments between those, which is
+                # listed in Kappa
+                num_coopts = Alpha_view[i,j] * Beta_view[itar,jtar]
+                K_ij = Ks[(k+i, l+j)]
+                for i2 in range(i, itar):
+                    for j2 in range(j, jtar):
+                        K_view[i2, j2] += K_ij[i2 - i, j2 - j] * num_coopts
+
+    # store the newly computed K matrix
     Ks[(k, l)] = K
 
 ###############################################
