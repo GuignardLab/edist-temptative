@@ -169,6 +169,139 @@ class TestSED(unittest.TestCase):
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 
+    def test_standard_sed(self):
+        x = 'aabbccdd'
+        y = 'aaabcccde'
+        expected = 3
+        actual = sed.sed_string(x, y)
+        self.assertEqual(expected, actual)
+
+        actual = sed.standard_sed(x, y)
+        self.assertEqual(float(expected), actual)
+
+    def test_standard_sed_backtrace(self):
+        x = 'abcde'
+        y = 'bdef'
+
+        expected_ali = Alignment()
+        expected_ali.append_tuple(0, -1)
+        expected_ali.append_tuple(1, 0)
+        expected_ali.append_tuple(2, -1)
+        expected_ali.append_tuple(3, 1)
+        expected_ali.append_tuple(4, 2)
+        expected_ali.append_tuple(-1, 3)
+
+        actual_ali = sed.standard_sed_backtrace(x, y)
+        self.assertEqual(expected_ali, actual_ali)
+
+        actual_ali = sed.standard_sed_backtrace_stochastic(x, y)
+        self.assertEqual(expected_ali, actual_ali)
+
+    def test_standard_sed_backtrace_stochastic(self):
+        # test an ambiguous case and check whether the stochastic
+        # backtracing does select all possible alignments with the
+        # expected distribution
+
+        x = 'aaa'
+        y = 'aa'
+
+        expected_alis = [Alignment(), Alignment(), Alignment()]
+        expected_alis[0].append_tuple(0, 0)
+        expected_alis[0].append_tuple(1, 1)
+        expected_alis[0].append_tuple(2, -1)
+        expected_alis[1].append_tuple(0, 0)
+        expected_alis[1].append_tuple(1, -1)
+        expected_alis[1].append_tuple(2, 1)
+        expected_alis[2].append_tuple(0, -1)
+        expected_alis[2].append_tuple(1, 0)
+        expected_alis[2].append_tuple(2, 1)
+
+        T = 100
+        histogram = np.zeros(len(expected_alis))
+        for t in range(T):
+            actual_ali = sed.standard_sed_backtrace_stochastic(x, y)
+            self.assertTrue(actual_ali in expected_alis)
+            a = expected_alis.index(actual_ali)
+            histogram[a] += 1
+        histogram /= T
+
+        # the last option will dominate the distribution because
+        # there is no choice left if we decide to delete a in the
+        # beginning.
+        expected_histogram = np.array([0.25, 0.25, 0.5])
+        np.testing.assert_allclose(histogram, expected_histogram, atol=0.1)
+
+    def test_standard_sed_backtrace_matrix(self):
+
+        x = 'aaa'
+        y = 'aa'
+
+        # set up expected count matrix
+        expected_K = np.array([[2, 1, 0], [0, 1, 2]]).T
+        expected_k = 3
+
+        P, K, k = sed.standard_sed_backtrace_matrix(x, y)
+
+        np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+        x = 'abc'
+        y = 'aa'
+
+        # set up expected count matrix
+        expected_K = np.array([[2, 0, 0], [0, 1, 1]]).T
+        expected_k = 2
+
+        P, K, k = sed.standard_sed_backtrace_matrix(x, y)
+
+        np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+        x = 'abc'
+        y = 'bc'
+
+        # set up expected count matrix
+        expected_K = np.array([[0, 1, 0], [0, 0, 1]]).T
+        expected_k = 1
+
+        P, K, k = sed.standard_sed_backtrace_matrix(x, y)
+
+        np.testing.assert_almost_equal(P[:len(x), :][:, :len(y)], K / k, 2)
+        np.testing.assert_almost_equal(np.sum(P[:,:len(y)], axis=0), np.ones(len(y)), 2)
+        np.testing.assert_almost_equal(np.sum(P[:len(x),:], axis=1), np.ones(len(x)), 2)
+        np.testing.assert_almost_equal(K, expected_K, 2)
+        self.assertEqual(expected_k, k)
+
+    def test_speed(self):
+        m = 300
+        # create a very large tree with maximum number of keyroots
+        x = ['a'] * (2 * m + 1)
+        y = ['b'] * m
+
+        # as character distance, use the kronecker delta
+        def kron_distance(x, y):
+            if(x == y):
+                return 0.
+            else:
+                return 1.
+
+        # compare how long the general edit distance takes
+        start = time.time()
+        d = sed.sed(x, y, kron_distance)
+        general_time = time.time() - start
+
+        # with how long the standard edit distance takes
+        start = time.time()
+        d = sed.standard_sed(x, y)
+        std_time = time.time() - start
+
+        self.assertTrue(std_time < general_time)
 
 if __name__ == '__main__':
     unittest.main()
