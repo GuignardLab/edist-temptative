@@ -49,10 +49,9 @@ class Tuple:
         Args:
         x: A symbol list for the left indices.
         y: A symbol list for the right indices.
-        deltas: A map which contains for any tuple name
-                a function which assigns costs to symbol pairings.
-                If provided, the cost for any oepration is rendered as
-                well.
+        deltas: The cost function delta mapping pairs of elements
+                to replacement/deletion/insertion costs OR
+                A map which contains for any operation name such a function.
 
         Returns: The cost assigned by deltas to this tuple.
         """
@@ -79,9 +78,10 @@ class Tuple:
         Args:
         x: A symbol list for the left indices.
         y: A symbol list for the right indices.
-        deltas: (optional) A map which contains for any tuple name
-                a function which assigns costs to symbol pairings.
-                If provided, the cost for any oepration is rendered as
+        deltas: (optional) The cost function delta mapping pairs of elements
+                to replacement/deletion/insertion costs OR
+                A map which contains for any operation name such a function.
+                If provided, the cost for any operation is rendered as
                 well.
 
         Returns: A string representing this tuple.
@@ -163,10 +163,9 @@ class Alignment(list):
         Args:
         x: A symbol list for the left indices.
         y: A symbol list for the right indices.
-        deltas: A map which contains for any tuple name
-                a function which assigns costs to symbol pairings.
-                If provided, the cost for any oepration is rendered as
-                well.
+        deltas: The cost function delta mapping pairs of elements
+                to replacement/deletion/insertion costs OR
+                A map which contains for any operation name such a function.
 
         Returns: The cost assigned by deltas to this trace.
         """
@@ -185,9 +184,10 @@ class Alignment(list):
         Args:
         x: A symbol list for the left indices.
         y: A symbol list for the right indices.
-        deltas: (optional) A map which contains for any tuple name
-                a function which assigns costs to symbol pairings.
-                If provided, the cost for any oepration is rendered as
+        deltas: (optional) The cost function delta mapping pairs of elements
+                to replacement/deletion/insertion costs OR
+                A map which contains for any operation name such a function.
+                If provided, the cost for any operation is rendered as
                 well.
 
         Returns: A string representing this trace.
