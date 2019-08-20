@@ -68,10 +68,6 @@ def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
     # set up the result matrix
     D = np.zeros((K,L))
 
-    # set up the callback function
-    def callback(tpl):
-        D[tpl[0], tpl[1]] = tpl[2]
-
     # start off all parallel processing jobs
     results = []
     if(not delta):
