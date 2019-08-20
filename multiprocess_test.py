@@ -26,6 +26,8 @@ import numpy as np
 from edist.dtw import dtw
 from edist.dtw import dtw_string
 from edist.ted import ted
+from edist.alignment import Alignment
+from edist.sed import standard_sed_backtrace
 import edist.multiprocess as multiprocess
 
 __author__ = 'Benjamin Paaßen'
@@ -98,6 +100,71 @@ class TestMultiprocess(unittest.TestCase):
         # compute again using symmetric function
         D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted, delta = kron_distance)
         np.testing.assert_array_equal(D_expected, D_actual)
+
+
+    def test_pairwise_backtrace(self):
+        # consider three example strings, one of them being empty
+        x = ''
+        y = 'abcde'
+        z = 'fg'
+
+        Xs = [x, y, z]
+
+        # set up expected alignments
+        B_expected = [[], [], []]
+        ali = Alignment()
+        B_expected[0].append(ali)
+        ali = Alignment()
+        ali.append_tuple(-1, 0)
+        ali.append_tuple(-1, 1)
+        ali.append_tuple(-1, 2)
+        ali.append_tuple(-1, 3)
+        ali.append_tuple(-1, 4)
+        B_expected[0].append(ali)
+        ali = Alignment()
+        ali.append_tuple(-1, 0)
+        ali.append_tuple(-1, 1)
+        B_expected[0].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, -1)
+        ali.append_tuple(1, -1)
+        ali.append_tuple(2, -1)
+        ali.append_tuple(3, -1)
+        ali.append_tuple(4, -1)
+        B_expected[1].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, 0)
+        ali.append_tuple(1, 1)
+        ali.append_tuple(2, 2)
+        ali.append_tuple(3, 3)
+        ali.append_tuple(4, 4)
+        B_expected[1].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, 0)
+        ali.append_tuple(1, 1)
+        ali.append_tuple(2, -1)
+        ali.append_tuple(3, -1)
+        ali.append_tuple(4, -1)
+        B_expected[1].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, -1)
+        ali.append_tuple(1, -1)
+        B_expected[2].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, 0)
+        ali.append_tuple(1, 1)
+        ali.append_tuple(-1, 2)
+        ali.append_tuple(-1, 3)
+        ali.append_tuple(-1, 4)
+        B_expected[2].append(ali)
+        ali = Alignment()
+        ali.append_tuple(0, 0)
+        ali.append_tuple(1, 1)
+        B_expected[2].append(ali)
+
+        # compute actual backtraces using the standard edit distance
+        B_actual = multiprocess.pairwise_backtraces(Xs, Xs, dist_backtrace = standard_sed_backtrace)
+        self.assertEqual(B_expected, B_actual)
 
 if __name__ == '__main__':
     unittest.main()

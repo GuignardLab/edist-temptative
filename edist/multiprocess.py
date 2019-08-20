@@ -73,17 +73,25 @@ def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
         D[tpl[0], tpl[1]] = tpl[2]
 
     # start off all parallel processing jobs
+    results = []
     if(not delta):
         for k in range(K):
             for l in range(L):
-                pool.apply_async(dist_with_indices, args=(k, l, dist, Xs[k], Ys[l]), callback=callback)
+                results.append(pool.apply_async(dist_with_indices, args=(k, l, dist, Xs[k], Ys[l])))
     else:
         for k in range(K):
             for l in range(L):
-                pool.apply_async(dist_with_indices_and_delta, args=(k, l, dist, Xs[k], Ys[l], delta), callback=callback)
+                results.append(pool.apply_async(dist_with_indices_and_delta, args=(k, l, dist, Xs[k], Ys[l], delta)))
 
-    # wait for the jobs to finish
+    # close the pool
     pool.close()
+
+    # sort all results into the matrix as soon as they arrive
+    for res in results:
+        k, l, d = res.get()
+        D[k, l] = d
+
+    # ensure that the entire pool is finished
     pool.join()
 
     # return the distance matrix
@@ -120,22 +128,26 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
     # set up the result matrix
     D = np.zeros((K,K))
 
-    # set up the callback function
-    def callback(tpl):
-        D[tpl[0], tpl[1]] = tpl[2]
-
     # start off all parallel processing jobs
+    results = []
     if(not delta):
         for k in range(K):
             for l in range(k+1, K):
-                pool.apply_async(dist_with_indices, args=(k, l, dist, Xs[k], Xs[l]), callback=callback)
+                results.append(pool.apply_async(dist_with_indices, args=(k, l, dist, Xs[k], Xs[l])))
     else:
         for k in range(K):
             for l in range(k+1, K):
-                pool.apply_async(dist_with_indices_and_delta, args=(k, l, dist, Xs[k], Xs[l], delta), callback=callback)
+                results.append(pool.apply_async(dist_with_indices_and_delta, args=(k, l, dist, Xs[k], Xs[l], delta)))
 
-    # wait for the jobs to finish
+    # close the pool
     pool.close()
+
+    # sort all results into the matrix as soon as they arrive
+    for res in results:
+        k, l, d = res.get()
+        D[k, l] = d
+
+    # ensure that the entire pool is finished
     pool.join()
 
     # add the lower diagonal
@@ -143,3 +155,62 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
 
     # return the distance matrix
     return D
+
+
+def pairwise_backtraces(Xs, Ys, dist_backtrace, delta = None, num_jobs = 8):
+    """ Computes the pairwise backtraces between the objects in
+    Xs and the objects in Ys. Each object in Xs and Ys needs to be a valid
+    input for the given distance function, i.e. a sequence or a tree.
+
+    Optionally, it is possible to specify a component-wise distance function
+    delta, which will then be forwarded to the input distance function
+
+    Args:
+    Xs:      a list of sequences or trees.
+    Ys:      another list of sequences or trees.
+    dist_backtrace: a function that takes an element of Xs as first and an
+              element of Ys as second input and returns an arbitrary object.
+    delta:   a function that takes two elements of the input sequences or trees
+             as inputs and returns their pairwise distance, where
+             delta(x, None) should be the cost of deleting x and delta(None, y)
+             should be the cost of inserting y. If this is not None, dist needs
+             to accept an optional argument 'delta' as well. Defaults to None.
+    num_jobs: The number of jobs to be used for parallel processing.
+             Defaults to 8.
+
+    Returns: a len(Xs) x len(Ys) list of lists of pairwise backtraces.
+    """
+    K = len(Xs)
+    L = len(Ys)
+    # set up a parallel processing pool
+    pool = mp.Pool(num_jobs)
+    # set up the result matrix
+    B = []
+    for k in range(K):
+        bs_k = [None] * L
+        B.append(bs_k)
+
+    # start off all parallel processing jobs
+    results = []
+    if(not delta):
+        for k in range(K):
+            for l in range(L):
+                results.append(pool.apply_async(dist_with_indices, args=(k, l, dist_backtrace, Xs[k], Ys[l])))
+    else:
+        for k in range(K):
+            for l in range(L):
+                results.append(pool.apply_async(dist_with_indices_and_delta, args=(k, l, dist_backtrace, Xs[k], Ys[l], delta)))
+
+    # close the pool
+    pool.close()
+
+    # sort all results into the matrix as soon as they arrive
+    for res in results:
+        k, l, d = res.get()
+        B[k][l] = d
+
+    # ensure that the entire pool is finished
+    pool.join()
+
+    # return the distance matrix
+    return B
