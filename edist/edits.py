@@ -229,7 +229,9 @@ def alignment_to_script(alignment, x, y):
             if(op._right >= 0):
                 # if both left and right are >= 0, we have a replacement,
                 # which we can process right away
-                script.append(Replacement(op._left, y[op._right]))
+                # We ignore replacements that change nothing, though.
+                if(x[op._left] != y[op._right]):
+                    script.append(Replacement(op._left, y[op._right]))
             else:
                 # if only the left index is defined, we have a deletion, which
                 # we process later

@@ -98,8 +98,6 @@ class TestEdits(unittest.TestCase):
 
         # set up the expected script
         expected_script = edits.Script([
-            edits.Replacement(1, 'b'),
-            edits.Replacement(2, 'c'),
             edits.Deletion(0),
             edits.Insertion(1, 'e'),
             edits.Insertion(2, 'f')
@@ -120,8 +118,6 @@ class TestEdits(unittest.TestCase):
 
         # set up the expected script
         expected_script = edits.Script([
-            edits.Replacement(0, 'b'),
-            edits.Replacement(3, 'c'),
             edits.Deletion(2),
             edits.Deletion(1),
             edits.Insertion(0, 'a')
