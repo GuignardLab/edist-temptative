@@ -199,8 +199,8 @@ def dtw_string(str x, str y):
     cdef int j
     Delta = np.zeros((m, n))
     cdef double[:,:] Delta_view = Delta
-    for i in range(m):
-        for j in range(n):
+    for i in prange(m, nogil=True):
+        for j in prange(n):
             if(x[i] == y[j]):
                 Delta_view[i, j] = 0.
             else:

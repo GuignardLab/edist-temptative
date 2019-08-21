@@ -507,8 +507,8 @@ def sed_string(str x, str y):
     cdef long[:,:] Delta_view = Delta
     cdef int i
     cdef int j
-    for i in range(m):
-        for j in range(n):
+    for i in prange(m, nogil=True):
+        for j in prange(n):
             if(x[i] != y[j]):
                 Delta_view[i, j] = 1
 

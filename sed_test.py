@@ -281,8 +281,8 @@ class TestSED(unittest.TestCase):
     def test_speed(self):
         m = 300
         # create a very large tree with maximum number of keyroots
-        x = ['a'] * (2 * m + 1)
-        y = ['b'] * m
+        x = 'a' * (2 * m + 1)
+        y = 'b' * m
 
         # as character distance, use the kronecker delta
         def kron_distance(x, y):
@@ -301,7 +301,13 @@ class TestSED(unittest.TestCase):
         d = sed.standard_sed(x, y)
         std_time = time.time() - start
 
+        # with how long the string edit distance takes
+        start = time.time()
+        d = sed.sed_string(x, y)
+        string_time = time.time() - start
+
         self.assertTrue(std_time < general_time)
+        self.assertTrue(string_time < std_time)
 
 if __name__ == '__main__':
     unittest.main()
