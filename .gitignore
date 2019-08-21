@@ -4,5 +4,6 @@
 /build
 /dist
 /edist.egg-info
+/.eggs
 __pycache__
 .ipynb_checkpoints
