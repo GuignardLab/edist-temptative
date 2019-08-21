@@ -290,7 +290,7 @@ optimization.
 
 * Giegerich, R., Meyer, C., & Steffen, P. (2004). A discipline of dynamic
     programming over sequence data. Science of Computer Programming, 51(3),
-    215-263. doi:[10.1016/j.scico.2003.12.005][2004]
+    215-263. doi:[10.1016/j.scico.2003.12.005][Gie2004]
 * Gotoh, O. (1982). An improved algorithm for matching biological sequences.
     Journal of Molecular Biology, 162(3), 705-708. doi:[10.1016/0022-2836(82)90398-9][Got1982]
 * Paaßen, B., Mokbel, B., & Hammer, B. (2015). A Toolbox for Adaptive Sequence
