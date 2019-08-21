@@ -125,7 +125,7 @@ def _ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     return x_orl, x_kr, y_orl, y_kr, Delta, D_forest, D_tree
 
 def extract_from_tuple_input(x, y):
-    """ Assumes that both x and y are tuples and unpacks those tuples
+    """ Assumes that both x and y are tuples and unpacks those tuples.
 
     Args:
     x: a tuple
@@ -978,7 +978,7 @@ cdef long min3_int(long a, long b, long c) nogil:
 # Backtracing Functions #
 #########################
 
-def standard_ted_backtrace(x_nodes, x_adj, y_nodes, y_adj):
+def standard_ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None):
     """ Computes the standard tree edit distance between the trees x and y,
     each described by a list of nodes and an adjacency list adj, where adj[i]
     is a list of indices pointing to children of node i. This function
@@ -1008,6 +1008,8 @@ def standard_ted_backtrace(x_nodes, x_adj, y_nodes, y_adj):
 
     Returns: a co-optimal alignment to edit x into y.
     """
+    if(isinstance(x_nodes, tuple)):
+        x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
     x_orl, x_kr, y_orl, y_kr, Delta, D, D_tree = _standard_ted(x_nodes, x_adj, y_nodes, y_adj)
     # initialize the alignment
     ali = Alignment()
@@ -1127,7 +1129,6 @@ def standard_ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None):
        node x[i] has been aligned with node y[j].
     k: the number of co-optimal alignments overall, such that P = K / k.
     """
-
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
 
