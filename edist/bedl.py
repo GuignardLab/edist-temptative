@@ -67,6 +67,9 @@ class BEDL(BaseEstimator, ClassifierMixin):
     _idx:        A mapping from alphabet to indices.
     _embedding:  A len(alphabet) x len(alphabet) - 1 embedding matrix
                  for all symbols in the alphabet.
+    _delta_obj:  An internal object to make storing of the delta function
+                 more efficient.
+    _delta:      The learned delta function.
     """
     def __init__(self, K, T = 5, phi = None, phi_grad = None, distance = None, distance_backtrace = None):
         self.K = K
@@ -159,6 +162,10 @@ class BEDL(BaseEstimator, ClassifierMixin):
             self._embedding = res.x.reshape(self._embedding.shape)
             # store current prototypes
             old_w = np.copy(self._classifier._w)
+        # store the learned delta function
+        self._delta_obj = EmbeddingDelta(self._embedding)
+        self._delta_obj._index = self._idx
+        self._delta = self._delta_obj.delta_with_indexing
         return self
 
     def _loss_and_grad(self, embedding, Ps, y, unique_labels):
@@ -308,10 +315,13 @@ class EmbeddingDelta:
     embedding delta function pickleable.
 
     Attributes:
-    _embedding: The current embedding.
+    _Delta: The current symbol-to-symbol distance matrix
     """
     def __init__(self, embedding):
-        self._embedding = embedding
+        # extend the embedding by a zero vector
+        embedding = np.concatenate((embedding, np.zeros((1, embedding.shape[1]))))
+        # compute the pairwise distances
+        self._Delta = squareform(pdist(embedding))
 
     def delta(self, x, y):
         """ Computes the distance between two embedding vectors identified
@@ -322,8 +332,7 @@ class EmbeddingDelta:
         y: the right-hand-side index or None.
 
         Returns:
-        The Euclidean distance between the embedding for x and
-        for y.
+        The Euclidean distance between the embedding for x and for y.
         """
         if(x is None):
             if(y is None):
@@ -331,11 +340,34 @@ class EmbeddingDelta:
             else:
                 # return the distance between x and the origin, i.e. the norm
                 # of x
-                return np.linalg.norm(self._embedding[x, :])
+                return self._Delta[-1, y]
         if(y is None):
             # return the distance between y and the origin, i.e. the norm of y
-            return np.linalg.norm(self._embedding[y, :])
-        return np.linalg.norm(self._embedding[x, :] - self._embedding[y, :])
+            return self._Delta[x, -1]
+        return self._Delta[x, y]
+
+    def delta_with_indexing(self, x, y):
+        """ Computes the distance between two symbols based on their
+        embedding vectors.
+
+        Args:
+        x: a symbol.
+        y: another symbol.
+
+        Returns:
+        The Euclidean distance between the embedding vectors for x and y.
+        """
+        if(x is None):
+            if(y is None):
+                return 0.
+            else:
+                # return the distance between x and the origin, i.e. the norm
+                # of x
+                return self._Delta[-1, self._index[y]]
+        if(y is None):
+            # return the distance between y and the origin, i.e. the norm of y
+            return self._Delta[self._index[x], -1]
+        return self._Delta[self._index[x], self._index[y]]
 
 
 def reduce_backtrace(P, x, y, size):
