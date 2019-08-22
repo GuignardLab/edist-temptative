@@ -1,25 +1,37 @@
 import setuptools
 from setuptools.extension import Extension
-from Cython.Build import cythonize
+
+try:
+    # try to import CYTHON
+    from Cython.Build import cythonize
+    USE_CYTHON = True
+except ImportError:
+    # if it fails, we use c compilation
+    USE_CYTHON = False
+
+ext = '.pyx' if USE_CYTHON else '.c'
 
 extensions = [
     Extension(
         "edist.adp",
-        ["edist/adp.pyx"],
+        ["edist/adp" + ext],
     ),
     Extension(
         "edist.dtw",
-        ["edist/dtw.pyx"],
+        ["edist/dtw" + ext],
     ),
     Extension(
         "edist.sed",
-        ["edist/sed.pyx"],
+        ["edist/sed" + ext],
     ),
     Extension(
         "edist.ted",
-        ["edist/ted.pyx"],
+        ["edist/ted" + ext],
     ),
 ]
+
+if(USE_CYTHON):
+    extensions = cythonize(extensions)
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -41,5 +53,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     keywords='levenshtein-distance dynamic-time-warping sequence-edit-distance sequence-alignment tree-edit-distance algebraic-dynamic-programming',
-    ext_modules=cythonize(extensions)
+    ext_modules=extensions
 )
