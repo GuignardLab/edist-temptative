@@ -1,6 +1,6 @@
 # Python Edit Distances
 
-Copyright (C) 2019 - Benjamin Paassen  
+Copyright (C) 2019-2020 - Benjamin Paassen  
 Machine Learning Research Group  
 Center of Excellence Cognitive Interaction Technology (CITEC)  
 Bielefeld University
@@ -25,8 +25,12 @@ sequences and trees of arbitrary node type. Additionally, this library
 contains multiple backtracing mechanisms for every algorithm in order to
 facilitate more detailed interpretation and subsequent processing. Finally,
 this library provides a reference implementation for embedding edit distance
-learning (BEDL; [Paaßen et al., 2018][Paa2018]) which enables users to learn
+learning (BEDL; [Paaßen et al., 2018][Paa2018]), which enables users to learn
 edit distance parameters instead of specifying them manually.
+
+Refer to the Quickstart Guide for how to use the library and refer to the
+list below for a full list of the enclosed algorithms. The detailed API
+documentation is available at [readthedocs.org](https://edist.readthedocs.io/en/latest/index.html).
 
 If you use this library in academic work, please cite:
 
@@ -74,12 +78,12 @@ In particular:
     ([Paaßen et al., 2018][Paa2018]).
 
 In general, applying this library works as follows. First, you select the
-function that best fits for your data and your setting (see below for an
-overview of all available functions). Let's say your function is called
-`distfun`. Then, you can compute the distance between two lists/trees
-`x` and `y` via `distfun(x, y)`. If you wish to compute the matrix of all
-pairwise distances for an entire dataset of lists/trees `X`, then you can
-use the `multiprocess` module as follows.
+edit distance function that best fits for your data and your setting
+(see below for an overview of all available functions). Let's say your
+function is called `distfun`. Then, you can compute the distance between two
+lists/trees `x` and `y` via `distfun(x, y)`. If you wish to compute the matrix
+of all pairwise distances for an entire dataset of lists/trees `X`, then you
+can use the `multiprocess` module as follows.
 
 ```
 from edist.multiprocess import pairwise_distances_symmetric
@@ -95,7 +99,8 @@ D = pairwise_distances(X, Y, distfun)
 ```
 
 If you wish to use a custom local distance function `delta`, you can supply
-it as additional argument to all these functions.
+it as additional argument to either `distfun` itself, to
+`pairwise_distances_symmetric`, or to `pairwise_distances`.
 
 If you wish to compute the optimal alignment between two lists/trees `x`
 and `y` according to `distfun`, you can use the function
@@ -191,6 +196,18 @@ library.
   * `edist.ted.ted_backtrace_matrix(x_nodes, x_adj, y_nodes, delta)` for the
     same, but returning a probability distribution over all pairings between
     elements of `x` and `y`.
+* The set edit distance (SetED; unpublished, but using the Hungarian algorithm
+    of [Kuhn, 1955][Kuh1955] at its core):
+  * `edist.seted.standard_seted(x, y)` for set edit distance computation
+    between the sets `x` and `y`, which are both given as lists for
+    convenience. The cost for replacements, deletions, and insertions is fixed
+    to 1.
+  * `edist.seted.standard_seted_backtrace(x, y)` for backtracing for the set
+    edit distance.
+  * `edist.seted.seted(x, y, delta)` for set edit distance computation with a
+    custom element distance function `delta`.
+  * `edist.seted.seted_backtrace(x, y, delta)` for backtracing for the set
+    edit distance with a custom element distance function `delta`.
 
 Additionally, this library contains a few helper modules, namely:
 
@@ -259,13 +276,14 @@ However, there are a few general points that are worth noting in short:
 * Even though dynamic programming makes edit distances polynomial, computing
   them can become prohibitively expensive for long sequences/large trees. In
   particular, any sequence edit distance lies in $`\mathcal{O}(m \cdot n)`$,
-  where $`m`$ and $`n`$ are the lengths of the input sequences, and the tree
-  edit distance lies in $`\mathcal{O}(m^2 \cdot n^2)`$. Fortunately, the
-  [cython][cython] implementation provided in this library is relatively fast
-  and thus can cope with $`m, n`$ even up to a few thousand elements. Still, it
-  is key that you choose the edit distance function that is best fitting to
-  your case. For example, `edist.sed.sed_string` is about factor 15 faster
-  compared to the more general `edist.sed.sed`.
+  where $`m`$ and $`n`$ are the lengths of the input sequences, the tree
+  edit distance lies in $`\mathcal{O}(m^2 \cdot n^2)`$, and the set edit
+  distance in $`\mathcal{O}((m+n)^3)`$. Fortunately, the [cython][cython]
+  implementation provided in this library is relatively fast and thus can cope
+  with $`m, n`$ even up to a few thousand elements (at least for sequence
+  edits). Still, it is key that you choose the edit distance function that is
+  best fitting to your case. For example, `edist.sed.sed_string` is about
+  factor 15 faster compared to the more general `edist.sed.sed`.
 
 For more background on the algorithms, we refer to the Wikipedia articles for
 the [Levenshtein distance][Lev] and [dynamic time warping][dtw], to the paper
@@ -284,7 +302,8 @@ This library is licensed under the [GNU General Public License Version 3][GPLv3]
 This library depends on [NumPy][np] for matrix operations, and on [cython][cython]
 for the effective C-interface. Further, the `bedl.py` module depends on
 [scikit-learn][scikit] for the base interfaces and on [SciPy][scipy] for
-optimization.
+optimization. Finally, the `seted.pyx` module depends on [SciPy][scipy] for
+an implementation of the Hungarian algorithm ([Kuhn, 1955][Kuh1955]).
 
 ## Literature
 
@@ -293,6 +312,10 @@ optimization.
     215-263. doi:[10.1016/j.scico.2003.12.005][Gie2004]
 * Gotoh, O. (1982). An improved algorithm for matching biological sequences.
     Journal of Molecular Biology, 162(3), 705-708. doi:[10.1016/0022-2836(82)90398-9][Got1982]
+* Kuhn, H. (1955). The Hungarian method for the assignment problem.
+    Naval Research Logistics Quarterly, 2(1-2), 83-97. doi:[10.1002/nav.3800020109][Kuh1955]
+* Levenshtein, V. (1965). Binary codes capable of correcting deletions,
+    insertions, and reversals. Soviet Physics Doklady, 10(8), 707-710.
 * Paaßen, B., Mokbel, B., & Hammer, B. (2015). A Toolbox for Adaptive Sequence
     Dissimilarity Measures for Intelligent Tutoring Systems. In O. C. Santos,
     J. G. Boticario, C. Romero, M. Pechenizkiy, A. Merceron, P. Mitros,
@@ -330,6 +353,7 @@ optimization.
 [Got1982]:https://doi.org/10.1016/0022-2836(82)90398-9 "Gotoh, O. (1982). An improved algorithm for matching biological sequences. Journal of Molecular Biology, 162(3), 705-708. doi:10.1016/0022-2836(82)90398-9"
 [Gie2004]:https://doi.org/10.1016/j.scico.2003.12.005 "Giegerich, R., Meyer, C., & Steffen, P. (2004). A discipline of dynamic programming over sequence data. Science of Computer Programming, 51(3), 215-263. doi:10.1016/j.scico.2003.12.005"
 [Zha1989]:https://doi.org/10.1137/0218082 "Zhang, K., & Shasha, D. (1989). Simple Fast Algorithms for the Editing Distance between Trees and Related Problems. SIAM Journal on Computing, 18(6), 1245-1262. doi:10.1137/0218082"
+[Kuh1955]:https://doi.org/10.1002/nav.3800020109 "Kuhn, H. (1955). The Hungarian method for the assignment problem. Naval Research Logistics Quarterly, 2(1-2), 83-97. doi:10.1002/nav.3800020109"
 [tcs]:https://openresearch.cit-ec.de/projects/tcs "TCS Alignment Toolbox homepage"
 [pypi]:https://pypi.org/project/edist/ "PyPi edist project page"
 [cython]:https://cython.org/ "cython homepage"
