@@ -1,26 +1,27 @@
 #!python
 #cython: language_level=3
 """
-Implements the tree edit distance and its backtracing in cython.
+Implements the tree edit distance of Zhang and Shasha (1989) and its
+backtracing in cython.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import heapq
 import numpy as np
@@ -31,9 +32,9 @@ cimport cython
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -50,19 +51,27 @@ def ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
-    delta:   a function that takes two nodes as inputs and returns their
-             pairwise distance, where delta(x, None) should be the cost of
-             deleting x and delta(None, y) should be the cost of inserting y.
-             If undefined, this method calls standard_ted instead.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
+    delta: function (default = None)
+        a function that takes two nodes as inputs and returns their pairwise
+        distance, where delta(x, None) should be the cost of deleting x and
+        delta(None, y) should be the cost of inserting y. If undefined, this
+        method calls standard_ted instead.
 
-    Returns: the tree edit distance between x and y according to delta.
+    Returns
+    -------
+    d: float
+        the tree edit distance between x and y according to delta.
+
     """
     if(delta is None):
         return float(standard_ted(x_nodes, x_adj, y_nodes, y_adj))
@@ -127,11 +136,29 @@ def _ted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
 def extract_from_tuple_input(x, y):
     """ Assumes that both x and y are tuples and unpacks those tuples.
 
-    Args:
-    x: a tuple
-    y: another tuple
+    Parameters:
+    -----------
+    x: tuple
+        a tuple
+    y: tuple
+        another tuple
 
-    Returns x[0], x[1], y[0], y[1]
+    Returns
+    -------
+    x_nodes: list
+        x[0]
+    x_adj: list
+        x[1]
+    y_nodes: list
+        y[0]
+    y_adj: list
+        y[1]
+
+    Raises
+    ------
+    ValueError
+        if the input is not tuple-shaped.
+
     """
     if(len(x) != 2):
         raise ValueError('If the first input is a tuple, it needs to contain exactly two elements, a node list and an adjacency list')
@@ -147,19 +174,25 @@ def extract_from_tuple_input(x, y):
 
 def outermost_right_leaves(list adj):
     """ Computes the outermost right leaves of a tree based on its adjacency
-        list. The outermost right leaf of a tree is defined as recursively
-        accessing the right-most child of a node until we hit a leaf.
+    list. The outermost right leaf of a tree is defined as recursively
+    accessing the right-most child of a node until we hit a leaf.
 
     Note that we assume a proper depth-first-search order of adj, i.e. for
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    adj: An adjacency list representation of the tree, i.e. an array such that
-         for every i, adj[i] is the list of child indices for node i.
+    Parameters
+    ----------
+    adj: list
+        An adjacency list representation of the tree, i.e. an array such that
+        for every i, adj[i] is the list of child indices for node i.
 
-    Returns: An array containing the outermost right leaf index for every node
-             in the tree.
+    Returns
+    -------
+    orl: int array
+        An array containing the outermost right leaf index for every node
+        in the tree.
+
     """
     # the number of nodes in the tree
     cdef int m = len(adj)
@@ -192,14 +225,20 @@ def outermost_right_leaves(list adj):
 
 def keyroots(long[:] orl):
     """ Computes the keyroots of a tree based on its outermost right leaf
-        array. The keyroot for a node i is defined as the lowest k, such that
-        orl[i] = orl[k].
+    array. The keyroot for a node i is defined as the lowest k, such that
+    orl[i] = orl[k].
 
-    Args:
-    orl: An outermost right leaf array as computed by the
-         outermost_right_leaves function above.
+    Parameters
+    ----------
+    orl: array_like
+        An outermost right leaf array as computed by the
+        outermost_right_leaves function above.
 
-    Returns: An array of keyroots in descending order.
+    Returns
+    -------
+    keyroots: int array
+        An array of keyroots in descending order.
+
     """
     # the number of nodes in the tree
     cdef int m = len(orl)
@@ -259,18 +298,27 @@ cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, c
 
     Let m and n be the size of tree x and y respectively.
 
-    Args:
-    x_orl: the outermost right leaves for tree x (int array of length m).
-    x_kr:  the keyroots for tree x in descending order (int array).
-    y_orl: the outermost right leaves for tree y (int array of length n).
-    y_kr:  the keyroots for tree y in descending order (int array).
-    Delta: an (m+1) x (n+1) matrix, where Delta[i,j] for i < m, j < n is the
-           cost of replacing x[i] with y[j], where Delta[i,n] is the cost of
-           deleting x[i], and where Delta[m,j] is the cost of inserting y[j].
-    D:     an empty (m+1) x (n+1) matrix used for temporary computations.
-    D_tree: an empty m x n matrix. After this method has run, D_tree[i,j] will
-            be the tree edit distance between the subtree rooted at i and the
-            subtree rooted at j.
+    Parameters
+    ----------
+    x_orl: long array
+        the outermost right leaves for tree x (int array of length m).
+    x_kr: long array
+        the keyroots for tree x in descending order (int array).
+    y_orl: long array
+        the outermost right leaves for tree y (int array of length n).
+    y_kr: long array
+        the keyroots for tree y in descending order (int array).
+    Delta: double matrix
+        an (m+1) x (n+1) matrix, where Delta[i,j] for i < m, j < n is the
+        cost of replacing x[i] with y[j], where Delta[i,n] is the cost of
+        deleting x[i], and where Delta[m,j] is the cost of inserting y[j].
+    D: double matrix
+        an empty (m+1) x (n+1) matrix used for temporary computations.
+    D_tree: double matrix
+        an empty m x n matrix. After this method has run, D_tree[i,j] will
+        be the tree edit distance between the subtree rooted at i and the
+        subtree rooted at j.
+
     """
     # the number of nodes in both trees
     cdef int m = len(x_orl)
@@ -338,14 +386,22 @@ cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, c
 
 
 cdef double min3(double a, double b, double c) nogil:
-    """ Computes the minimum of three numbers, a, b, and c
+    """ Computes the minimum of three numbers.
 
-    Args:
-    a: the first number
-    b: the second number
-    c: the third number
+    Parameters
+    ----------
+    a: double
+        a number
+    b: double
+        another number
+    c: double
+        yet another number
 
-    Returns: the minimum of a, b, and c.
+    Returns
+    -------
+    min3: double
+        min({a, b, c})
+
     """
     if(a < b):
         if(a < c):
@@ -374,19 +430,28 @@ def ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
-    delta:   a function that takes two nodes as inputs and returns their
-             pairwise distance, where delta(x, None) should be the cost of
-             deleting x and delta(None, y) should be the cost of inserting y.
-             If undefined, this method calls standard_ted_backtrace instead.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
+    delta: function (default = None)
+        a function that takes two nodes as inputs and returns their pairwise
+        distance, where delta(x, None) should be the cost of deleting x and
+        delta(None, y) should be the cost of inserting y. If undefined, this
+        method calls standard_ted instead.
 
-    Returns: a co-optimal alignment to edit x into y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the tree edit
+        distance.
+
     """
     if(delta is None):
         return standard_ted_backtrace(x_nodes, x_adj, y_nodes, y_adj)
@@ -494,26 +559,35 @@ def ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = N
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
-    delta:   a function that takes two nodes as inputs and returns their
-             pairwise distance, where delta(x, None) should be the cost of
-             deleting x and delta(None, y) should be the cost of inserting y.
-             If undefined, this method calls standard_ted_backtrace instead.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
+    delta: function (default = None)
+        a function that takes two nodes as inputs and returns their pairwise
+        distance, where delta(x, None) should be the cost of deleting x and
+        delta(None, y) should be the cost of inserting y. If undefined, this
+        method calls standard_ted instead.
 
-    Returns:
-    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
-       alignments in which node x[i] has been aligned with node y[j].
-       P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
-       the fraction of insertions of node y[j].
-    K: a matrix that contains the counts for all co-optimal alignments in which
-       node x[i] has been aligned with node y[j].
-    k: the number of co-optimal alignments overall, such that P = K / k.
+    Returns
+    -------
+    P: array_like
+        a matrix, where entry P[i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been aligned with node y[j].
+        P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
+        the fraction of insertions of node y[j].
+    K: array_like
+        a matrix that contains the counts for all co-optimal alignments in
+        which node x[i] has been aligned with node y[j].
+    k: int
+        the number of co-optimal alignments overall, such that P = K / k.
+
     """
     if(delta is None):
         raise ValueError('Not yet supported!')
@@ -810,15 +884,22 @@ def standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
 
-    Returns: the standard tree edit distance between x and y as an integer.
+    Returns
+    -------
+    d: int
+        the standard tree edit distance between x and y according.
+
     """
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
@@ -877,17 +958,27 @@ cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_or
 
     Let m and n be the size of tree x and y respectively.
 
-    Args:
-    x_orl: the outermost right leaves for tree x (int array of length m).
-    x_kr:  the keyroots for tree x in descending order (int array).
-    y_orl: the outermost right leaves for tree y (int array of length n).
-    y_kr:  the keyroots for tree y in descending order (int array).
-    Delta: an m x n int matrix, where Delta[i,j] is 1 if x[i] != y[j] and 0
-           if x[i] == y[j]
-    D:     an empty (m+1) x (n+1) matrix used for temporary computations.
-    D_tree: an empty m x n matrix. After this method has run, D_tree[i,j] will
-            be the tree edit distance between the subtree rooted at i and the
-            subtree rooted at j.
+    Parameters
+    ----------
+    x_orl: long array
+        the outermost right leaves for tree x (int array of length m).
+    x_kr: long array
+        the keyroots for tree x in descending order (int array).
+    y_orl: long array
+        the outermost right leaves for tree y (int array of length n).
+    y_kr: long array
+        the keyroots for tree y in descending order (int array).
+    Delta: long matrix
+        an (m+1) x (n+1) matrix, where Delta[i,j] for i < m, j < n is the
+        cost of replacing x[i] with y[j], where Delta[i,n] is the cost of
+        deleting x[i], and where Delta[m,j] is the cost of inserting y[j].
+    D: long matrix
+        an empty (m+1) x (n+1) matrix used for temporary computations.
+    D_tree: long matrix
+        an empty m x n matrix. After this method has run, D_tree[i,j] will
+        be the tree edit distance between the subtree rooted at i and the
+        subtree rooted at j.
+
     """
     # the number of nodes in both trees
     cdef int m = len(x_orl)
@@ -954,14 +1045,22 @@ cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_or
                                  )
 
 cdef long min3_int(long a, long b, long c) nogil:
-    """ Computes the minimum of three numbers, a, b, and c
+    """ Computes the minimum of three numbers.
 
-    Args:
-    a: the first number
-    b: the second number
-    c: the third number
+    Parameters
+    ----------
+    a: int
+        a number
+    b: int
+        another number
+    c: int
+        yet another number
 
-    Returns: the minimum of a, b, and c.
+    Returns
+    -------
+    min3: int
+        min({a, b, c})
+
     """
     if(a < b):
         if(a < c):
@@ -998,15 +1097,23 @@ def standard_ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None):
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
 
-    Returns: a co-optimal alignment to edit x into y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the tree edit
+        distance.
+
     """
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
@@ -1112,22 +1219,30 @@ def standard_ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None):
     every node i, the following indices are all part of the subtree rooted at
     i until we hit the index of i's right sibling or the end of the tree.
 
-    Args:
-    x_nodes: a list of nodes for tree x
-             OR a tuple of the form (x_nodes, x_adj).
-    x_adj:   an adjacency list for tree x
-             OR a tuple of the form (y_nodes, y_adj).
-    y_nodes: a list of nodes for tree y.
-    y_adj:   an adjacency list for tree y.
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
 
-    Returns:
-    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
-       alignments in which node x[i] has been aligned with node y[j].
-       P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
-       the fraction of insertions of node y[j].
-    K: a matrix that contains the counts for all co-optimal alignments in which
-       node x[i] has been aligned with node y[j].
-    k: the number of co-optimal alignments overall, such that P = K / k.
+    Returns
+    -------
+    P: array_like
+        a matrix, where entry P[i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been aligned with node y[j].
+        P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
+        the fraction of insertions of node y[j].
+    K: array_like
+        a matrix that contains the counts for all co-optimal alignments in
+        which node x[i] has been aligned with node y[j].
+    k: int
+        the number of co-optimal alignments overall, such that P = K / k.
+
     """
     if(isinstance(x_nodes, tuple)):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)

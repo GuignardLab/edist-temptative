@@ -2,48 +2,59 @@
 Implements tree edits, i.e. functions which take a tree as input and
 return a changed tree.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
 import copy
 from edist.ted import outermost_right_leaves
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
 class Edit(abc.ABC):
+    """ An abstract parent class for all edits.
 
+    """
     @abc.abstractmethod
     def apply(self, nodes, adj):
         """ Applies this edit to the given tree and returns a copy of the tree
         with the applied changes. The original tree remains unchanged.
 
-        Args:
-        nodes: a node list.
-        adj:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
 
-        Returns: a copy of nodes and adj with the applied edit.
+        Returns
+        -------
+        nodes: list
+            a copy of nodes with the applied edit.
+        adj: list
+            a copy of adj with the applied edit.
+
         """
         pass
 
@@ -52,9 +63,13 @@ class Edit(abc.ABC):
         """ Applies this edit to the given tree. Note that this changes the
         input arguments.
 
-        Args:
-        nodes: a node list.
-        adj:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
         """
         pass
 
@@ -62,9 +77,13 @@ class Edit(abc.ABC):
 class Replacement(Edit):
     """ Replaces the label of node self._index with self._label.
 
-    Attributes:
-    _index: The index of the tree node to which this edit is applied.
-    _label: The new label for the self._indexth node.
+    Attributes
+    ----------
+    _index: int
+        The index of the tree node to which this edit is applied.
+    _label: str
+        The new label for the self._indexth node.
+
     """
     def __init__(self, index, label):
         self._index = index
@@ -73,12 +92,20 @@ class Replacement(Edit):
     def apply(self, nodes_orig, adj):
         """ Replaces the label of node self._index with self._label.
 
-        Args:
-        nodes_orig: a node list.
-        adj:        an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
 
-        Returns: a copy of nodes with the replaced label and the original
-                 adjacency list.
+        Returns
+        -------
+        nodes: list
+            a copy of nodes with the applied edit.
+        adj: list
+            a copy of adj with the applied edit.
+
         """
         nodes = copy.copy(nodes_orig)
         self.apply_in_place(nodes, adj)
@@ -87,9 +114,14 @@ class Replacement(Edit):
     def apply_in_place(self, nodes, adj):
         """ Replaces the label of node self._index with self._label.
 
-        Args:
-        nodes a node list.
-        adj:  an adjacency list.
+
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
         """
         nodes[self._index] = self._label
 
@@ -108,8 +140,11 @@ class Deletion(Edit):
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
-    Attributes:
-    _index: The index of the tree node to which this edit is applied.
+    Attributes
+    ----------
+    _index: int
+        The index of the tree node to which this edit is applied.
+
     """
     def __init__(self, index):
         self._index = index
@@ -119,12 +154,20 @@ class Deletion(Edit):
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
-        Args:
-        nodes_orig: a node list.
-        adj_orig:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
 
-        Returns: a copy of nodes_orig and adj_orig where node self._index is
-        deleted and the adjacency list structure is adjusted accordingly.
+        Returns
+        -------
+        nodes: list
+            a copy of nodes with the applied edit.
+        adj: list
+            a copy of adj with the applied edit.
+
         """
         nodes = copy.copy(nodes_orig)
         adj   = copy.deepcopy(adj_orig)
@@ -136,9 +179,13 @@ class Deletion(Edit):
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
-        Args:
-        nodes: a node list.
-        adj:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
         """
         # delete the nodes entry at index
         del nodes[self._index]
@@ -171,10 +218,16 @@ class Deletion(Edit):
 def get_roots(adj):
     """ Returns all roots of a forest, described by an adjacency list.
 
-    Args:
-    adj: an adjacency list
+    Parameters
+    ----------
+    adj: list
+        an adjacency list
 
-    Returns: a list of roots, ascendingly sorted.
+    Returns
+    -------
+    roots: list
+        a list of roots, ascendingly sorted.
+
     """
     # build a parent representation of the adjacency list
     p = [-1] * len(adj)
@@ -194,13 +247,17 @@ class Insertion(Edit):
         child of node self._parent_index and uses the next self._num_children
         right siblings of itself as its children.
 
-    Attributes:
-    _parent_index: The index of the tree node to which we add a new child.
-    _label:        The label for the new child node.
-    _child_index:  The new node will be the _child_indexth child of node
-                   _parent_index.
-    _num_children: The number of right siblings that will be used as new
-                   grandchildren.
+    Attributes
+    ----------
+    _parent_index: int
+        The index of the tree node to which we add a new child.
+    _label: str
+        The label for the new child node.
+    _child_index: int
+        The new node will be the _child_indexth child of node _parent_index.
+    _num_children: int
+        The number of right siblings that will be used as new grandchildren.
+
     """
     def __init__(self, parent_index, child_index, label, num_children = 0):
         self._parent_index = parent_index
@@ -216,11 +273,20 @@ class Insertion(Edit):
         Note that inserting a new child at the root leads to a forest instead
         of a tree structure.
 
-        Args:
-        nodes_orig: a node list.
-        adj_orig:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
 
-        Returns: a copy of nodes_orig and adj_orig with the new inserted node.
+        Returns
+        -------
+        nodes: list
+            a copy of nodes with the applied edit.
+        adj: list
+            a copy of adj with the applied edit.
+
         """
         nodes = copy.copy(nodes_orig)
         adj   = copy.deepcopy(adj_orig)
@@ -235,9 +301,13 @@ class Insertion(Edit):
         Note that inserting a new child at the root leads to a forest instead
         of a tree structure.
 
-        Args:
-        nodes: a node list.
-        adj:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
         """
         # introduce some abbreviations for easier typing
         p = self._parent_index
@@ -307,6 +377,7 @@ class Insertion(Edit):
 
 class Script(list, Edit):
     """ A list of Edits.
+
     """
     def __init__(self, lst = []):
         list.__init__(self, lst)
@@ -314,11 +385,21 @@ class Script(list, Edit):
     def apply(self, nodes_orig, adj_orig):
         """ Applies all edits in this script.
 
-        Args:
-        nodes_orig: a node list.
-        adj_orig:   an adjacency list.
 
-        Returns: a copy of nodes_orig and adj_orig with all edits applied
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
+        Returns
+        -------
+        nodes: list
+            a copy of nodes with the applied edits.
+        adj: list
+            a copy of adj with the applied edits.
+
         """
         # if this script is empty, just return the inputs
         if(not self):
@@ -332,9 +413,13 @@ class Script(list, Edit):
     def apply_in_place(self, nodes, adj):
         """ Applies all edits in this script.
 
-        Args:
-        nodes: a node list.
-        adj:   an adjacency list.
+        Parameters
+        ----------
+        nodes: list
+            a node list.
+        adj: list
+            an adjacency list.
+
         """
         for e in range(len(self)):
             self[e].apply_in_place(nodes, adj)
@@ -353,16 +438,26 @@ def alignment_to_script(alignment, x_nodes, x_adj, y_nodes, y_adj):
     The precise algorithm is described in the paper:
     https://arxiv.org/abs/1805.06869
 
-    Args:
-    alignment: an Alignment object which maps between the given trees x and y.
-    x_nodes: the node list of tree x.
-    x_adj:   the adjacency list of tree x.
-    y_nodes: the node list of tree y.
-    y_adj:   the adjacency list of tree y.
+    Parameters
+    ----------
+    alignment: class alignment.Alignment
+        an Alignment object which maps between the given trees x and y.
+    x_nodes: list
+        the node list of tree x.
+    x_adj: list
+        the adjacency list of tree x.
+    y_nodes: list
+        the node list of tree y.
+    y_adj: list
+        the adjacency list of tree y.
 
-    Returns: A Script object script such that script.apply(x_nodes, x_adj) =
-             (y_nodes, y_adj) where every Tuple in the alignment has one
-             corresponding edit.
+    Returns
+    -------
+    script: class tree_edits.Script
+        A Script object script such that script.apply(x_nodes, x_adj) =
+        (y_nodes, y_adj) where every Tuple in the alignment has one
+        corresponding edit.
+
     """
     # in a first pass over the sequence, we disentangle replacements,
     # deletions, and insertions and convert the replacement right away because
@@ -416,12 +511,19 @@ def num_descendants(adj, filter_set):
     """ Counts the number of descendants of each node which are _not_ members
     of the given filter set.
 
-    Args:
-    adj:        an adjacency list
-    filter_set: a set excluding some node indices
+    Parameters
+    ----------
+    adj: list
+        an adjacency list
+    filter_set: set_like
+        a set excluding some node indices
 
-    Returns: A list which contains, for each node, the number of descendants
-             not from the filter set.
+    Returns
+    -------
+    out: list
+        A list which contains, for each node, the number of descendants
+        not from the filter set.
+
     """
     out = []
     _num_descendants(adj, filter_set, 0, out)

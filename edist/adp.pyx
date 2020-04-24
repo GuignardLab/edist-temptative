@@ -2,25 +2,25 @@
 #cython: language_level=3
 """
 Implements algebraic dynamic programming for edit distances.
-
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import heapq
 import random
 from collections.abc import Callable
@@ -28,9 +28,9 @@ import numpy as np
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -38,16 +38,21 @@ class RuleEntry:
     """ Models the set of all grammar rules for a single nonterminal symbol
     in an ADP grammar.
 
-    Attributes:
-    _reps: A list of possible replacements, stored as tuples of the form
-           (rep, B), where rep is the name of a replacement operation and
-           B is the nonterminal we obtain after applying rep.
-    _dels: A list of possible deletions, stored as tuples of the form
-           (del, B), where del is the name of a deletion operation and
-           B is the nonterminal we obtain after applying del.
-    _inss: A list of possible insertions, stored as tuples of the form
-           (ins, B), where ins is the name of a insertion operation and
-           B is the nonterminal we obtain after applying ins.
+    Attributes
+    ----------
+    _reps: list
+        A list of possible replacements, stored as tuples of the form
+       (rep, B), where rep is the name of a replacement operation and
+       B is the nonterminal we obtain after applying rep.
+    _dels: list
+        A list of possible deletions, stored as tuples of the form
+       (del, B), where del is the name of a deletion operation and
+       B is the nonterminal we obtain after applying del.
+    _inss: list
+        A list of possible insertions, stored as tuples of the form
+       (ins, B), where ins is the name of a insertion operation and
+       B is the nonterminal we obtain after applying ins.
+
     """
     def __init__(self):
         self._reps = []
@@ -74,11 +79,16 @@ def string_to_index_map(lst):
     """ Inverts a list of objects, i.e. converts a list of objects to
     a map from objects to indices in the list.
 
-    Args:
-    lst: A list of objects [x_1, ..., x_m].
+    Parameters
+    ----------
+    lst: list
+        A list of objects [`x_1`, ..., `x_m`].
 
-    Return:
-    dct: A map where dct[x_i] = i for all i.
+    Returns
+    -------
+    dct: dictionary
+        A map where dct[x_i] = i for all i.
+
     """
     dct = {}
     for i in range(len(lst)):
@@ -88,30 +98,44 @@ def string_to_index_map(lst):
 def string_to_index_list(lst, dct):
     """ Converts a list of objects to an index list, given a index mapping.
 
-    Args:
-    lst: A list of objects [x_1, ..., x_m].
-    dct: A mapping from objects to indices.
+    Parameters
+    ----------
+    lst: list
+        A list of objects [`x_1`, ..., `x_m`].
+    dct: dictionary
+        A mapping from objects to indices.
 
-    Return:
-    idx_list: The list [dct[x_1], ..., dct[x_m]]
+    Returns
+    -------
+    idx_list: list
+        The list [dct[`x_1`], ..., dct[`x_m`]]
+
     """
     idx_list = []
     for e in lst:
         if(e not in dct):
-            raise ValueError('unknown string: %s' % str(e))
+            raise ValueError('unknown entry: %s' % str(e))
         idx_list.append(dct[e])
     return idx_list
 
 def string_to_index_tuple_list(lst, op_dct, nont_dct):
     """ Converts a list of tuples to a list of tuple-indices.
 
-    Args:
-    lst:      A list of tuples [(x_1, y_1), ..., (x_m, y_m)].
-    op_dct:   A mapping from x-objects to indices.
-    nont_dct: A mapping from y-objects to indices.
+    Parameters
+    ----------
+    lst: list
+        A list of tuples [(`x_1`, `y_1`), ..., (`x_m`, `y_m`)].
+    op_dct: dictionary
+        A mapping from x-objects to indices.
+    nont_dct: dictionary
+        A mapping from y-objects to indices.
 
-    Return:
-    idx_list: The list [(op_dct[x_1], nont_dct[y_1]), ..., (op_dct[x_m], nont_dct[y_m])]
+    Returns
+    -------
+    idx_list: list
+        The list [(op_dct[`x_1`], nont_dct[`y_1`]), ...,
+        (op_dct[`x_m`], nont_dct[`y_m`])]
+
     """
     idx_list = []
     for e in lst:
@@ -129,30 +153,39 @@ class Grammar:
     accepting nonterminals, a set of permitted edit operations and a set of
     rules of the form
 
-    A -> delta B
+    `A` -> `delta` `B`
 
-    where A and B are nonterminals and delta is an edit operation, either a
-    replacement, a deletion, or an insertion. We define the set of possible
+    where `A` and `B` are nonterminals and `delta` is an edit operation, either
+    a replacement, a deletion, or an insertion. We define the set of possible
     edit scripts permitted by a given grammar inductively as all scripts that
     can be produced by starting from the self._start, replacing the current
     nonterminal with the right-hand-side of a matching rule arbitrary many
     times, and then deleting the current nonterminal if it is accepting.
 
-    Attributes:
-    _nonterminals: A list of nonterminals of this grammar. Defaults to the
-                   union of accepting and start.
-    _start:        The starting nonterminal, which should be in _nonterminals.
-    _accepting:    A list of accepting nonterminals, all of which should be in
-                   _nonterminals.
-    _reps:         A list of names of possible replacement operations.
-                   Defaults to an empty list.
-    _dels:         A list of names of possible deletion operations.
-                   Defaults to an empty list.
-    _inss:         A list of names of possible insertion operations.
-                   Defaults to an empty list.
-    _rules:        A mapping of nonterminal symbols to RuleEntries. Refer to
-                   The documentation above for more details on RuleEntries.
-                   Defaults to an empty map.
+    Attributes
+    ----------
+    _nonterminals: list (default = _accepting + {start})
+        A list of nonterminals of this grammar. Defaults to the union of
+        accepting and start.
+    _start: str
+        The starting nonterminal, which should be in _nonterminals.
+    _accepting: list
+        A list of accepting nonterminals, all of which should be in
+        self._nonterminals.
+    _reps: list (default = [])
+        A list of names of possible replacement operations.
+        Defaults to an empty list.
+    _dels: list (default = [])
+        A list of names of possible deletion operations.
+        Defaults to an empty list.
+    _inss: list (default = [])
+        A list of names of possible insertion operations.
+        Defaults to an empty list.
+    _rules: dictionary (default = {})
+        A mapping of nonterminal symbols to RuleEntries. Refer to
+        The documentation above for more details on RuleEntries.
+        Defaults to an empty map.
+
     """
     def __init__(self, start, accepting, nonterminals = None, reps = None, dels = None, inss = None, rules = None):
         self._start = start
@@ -202,15 +235,20 @@ class Grammar:
 
     def append_replacement(self, source, target, operation):
         """ Appends a rule to this grammar for a replacement operation,
-        i.e. a rule of the form A -> rep B.
+        i.e. a rule of the form `A` -> `rep` `B`.
 
-        Args:
-        source: The left-hand-side nonterminal A of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        target: The right-hand-side nonterminal B of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        operation: The name of the replacement operation rep. If not in
-                self._reps yet, it is appended automatically.
+        Parameters
+        ----------
+        source: str
+            The left-hand-side nonterminal `A` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        target: str
+            The right-hand-side nonterminal `B` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        operation: str
+            The name of the replacement operation rep. If not in
+            self._reps yet, it is appended automatically.
+
         """
         if(operation not in self._reps):
             self._reps.append(operation)
@@ -220,15 +258,19 @@ class Grammar:
 
     def append_deletion(self, source, target, operation):
         """ Appends a rule to this grammar for a deletion operation,
-        i.e. a rule of the form A -> del B.
+        i.e. a rule of the form `A` -> `del` `B`.
 
-        Args:
-        source: The left-hand-side nonterminal A of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        target: The right-hand-side nonterminal B of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        operation: The name of the deletion operation del. If not in
-                self._dels yet, it is appended automatically.
+        Parameters
+        ----------
+        source: str
+            The left-hand-side nonterminal `A` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        target: str
+            The right-hand-side nonterminal `B` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        operation: str
+            The name of the deletion operation del. If not in
+            self._dels yet, it is appended automatically.
         """
         if(operation not in self._dels):
             self._dels.append(operation)
@@ -237,16 +279,21 @@ class Grammar:
         self._rules[source]._dels.append((operation, target))
 
     def append_insertion(self, source, target, operation):
-        """ Appends a rule to this grammar for an insertion operation,
-        i.e. a rule of the form A -> ins B.
+        """ Appends a rule to this grammar for a deletion operation,
+        i.e. a rule of the form `A` -> `ins` `B`.
 
-        Args:
-        source: The left-hand-side nonterminal A of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        target: The right-hand-side nonterminal B of the new rule.
-                If not in self._nonterminals yet, it is appended automatically.
-        operation: The name of the insertion operation ins. If not in
-                self._inss yet, it is appended automatically.
+        Parameters
+        ----------
+        source: str
+            The left-hand-side nonterminal `A` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        target: str
+            The right-hand-side nonterminal `B` of the new rule.
+            If not in self._nonterminals yet, it is appended automatically.
+        operation: str
+            The name of the insertion operation ins. If not in
+            self._inss yet, it is appended automatically.
+
         """
         if(operation not in self._inss):
             self._inss.append(operation)
@@ -257,21 +304,33 @@ class Grammar:
     def size(self):
         """ Returns the number of nonterminals in this grammar.
 
-        Return: the number of nonterminals in this grammar.
+        Returns
+        -------
+        size: int
+            the number of nonterminals in this grammar.
+
         """
         return len(self._nonterminals)
 
     def start(self):
         """ Returns the starting nonterminal of this grammar.
 
-        Return: the starting nonterminal of this grammar.
+        Returns
+        -------
+        start: str
+            the starting nonterminal of this grammar.
+
         """
         return self._start
 
     def nonterminals(self):
         """ Returns the list of nonterminals of this grammar.
 
-        Return: the list of nonterminals of this grammar.
+        Returns
+        -------
+        nonts: list
+            the list of nonterminals of this grammar.
+
         """
         return self._nonterminals
 
@@ -279,12 +338,18 @@ class Grammar:
         """ Ensures that this grammar is compatible with the given algebra
         deltas.
 
-        Args:
-        deltas: An algebra, i.e. a mapping from operation names to distance
-                functions.
+        Parameters
+        ----------
+        deltas: dictionary
+            An algebra, i.e. a mapping from operation names to distance
+            functions.
 
-        Throws: A ValueError if any of the operations of this grammar is
-                not supported by the given algebra.
+        Raises
+        ------
+        ValueError
+            If any of the operations of this grammar is not supported by the
+            given algebra.
+
         """
         for rep_op in self._reps:
             if(rep_op not in deltas):
@@ -299,24 +364,31 @@ class Grammar:
     def adjacency_lists(self):
         """ Returns the adjacency list format of this grammar.
 
-        Returns:
-        start_idx:  The index of the starting nonterminal symbol.
-        accpt_idxs: A list of indices for all accepting nonterminals.
-        rep_adj:    An adjacency list covering all replacement operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> rep B, where A is the i-th nonterminal
-                    and the right-hand-sides are represented as tuples of
-                    operation indices and nonterminal indices.
-        del_adj:    An adjacency list covering all deletion operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> del B, where A is the i-th nonterminal
-                    and the right-hand-sides are represented as tuples of
-                    operation indices and nonterminal indices.
-        ins_adj:    An adjacency list covering all insertion operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> ins B, where A is the i-th nonterminal
-                    and the right-hand-sides are represented as tuples of
-                    operation indices and nonterminal indices.
+        Returns
+        -------
+        start_idx: int
+            The index of the starting nonterminal symbol.
+        accpt_idxs: list
+            A list of indices for all accepting nonterminals.
+        rep_adj: list
+            An adjacency list covering all replacement operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `rep` `B`, where `A` is the `i`-th nonterminal and the
+            right-hand-sides are represented as tuples of operation indices and
+            nonterminal indices.
+        del_adj: list
+            An adjacency list covering all deletion operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `del` `B`, where `A` is the `i`-th nonterminal and the
+            right-hand-sides are represented as tuples of operation indices and
+            nonterminal indices.
+        ins_adj: list
+            An adjacency list covering all insertion operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `ins` `B`, where `A` is the `i`-th nonterminal and the
+            right-hand-sides are represented as tuples of operation indices and
+            nonterminal indices.
+
         """
         # first, create maps from string to index representations
         nont_map = string_to_index_map(self._nonterminals)
@@ -342,24 +414,31 @@ class Grammar:
     def inverse_adjacency_lists(self):
         """ Returns the inverse adjacency list format of this grammar.
 
-        Returns:
-        start_idx:  The index of the starting nonterminal symbol.
-        accpt_idxs: A list of indices for all accepting nonterminals.
-        rep_adj:    An adjacency list covering all replacement operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> rep B, where B is the i-th nonterminal
-                    and (A, rep) is represented as a tuple tuples of
-                    operation index and nonterminal index.
-        del_adj:    An adjacency list covering all deletion operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> del B, where B is the i-th nonterminal
-                    and (A, del) is represented as a tuple tuples of
-                    operation index and nonterminal index.
-        ins_adj:    An adjacency list covering all insertion operations,
-                    i.e. a list where the i-th entry contains all rules
-                    of the form A -> ins B, where B is the i-th nonterminal
-                    and (A, ins) is represented as a tuple tuples of
-                    operation index and nonterminal index.
+        Returns
+        -------
+        start_idx: int
+            The index of the starting nonterminal symbol.
+        accpt_idxs: list
+            A list of indices for all accepting nonterminals.
+        rep_adj: list
+            An adjacency list covering all replacement operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `rep` `B`, where `B` is the `i`-th nonterminal and
+            (`A`, `rep`) is represented as a tuple tuples of operation index
+            and nonterminal index.
+        del_adj: list
+            An adjacency list covering all deletion operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `del` `B`, where `B` is the `i`-th nonterminal and
+            (`A`, `del`) is represented as a tuple tuples of operation index
+            and nonterminal index.
+        ins_adj: list
+            An adjacency list covering all insertion operations,
+            i.e. a list where the `i`-th entry contains all rules of the form
+            `A` -> `ins` `B`, where `B` is the `i`-th nonterminal and
+            (`A`, `ins`) is represented as a tuple tuples of operation index
+            and nonterminal index.
+
         """
         # first, create maps from string to index representations
         nont_map = string_to_index_map(self._nonterminals)
@@ -393,16 +472,24 @@ def edit_distance(x, y, grammar, deltas):
     """ Computes the edit distance between two sequences x and y, based on
     the given ADP grammar and the given algebra.
 
-    Returns:
-    x:       A list of objects.
-    y:       Another list of objects.
-    grammar: An ADP grammar. Refer to the documentation above for more
-             information.
-    deltas:  An algebra, i.e. a mapping from operation names to distance
-             functions OR a single distance function if the grammar supports
-             only a single replacement, deletion, and insertion operation.
+    Parameters
+    ----------
+    x: list
+        A list of objects.
+    y: list
+        Another list of objects.
+    grammar: class adp.Grammar
+        An ADP grammar. Refer to the documentation above for more information.
+    deltas: dictionary
+        An algebra, i.e. a mapping from operation names to distance functions
+        OR a single distance function if the grammar supports only a single
+        replacement, deletion, and insertion operation.
 
-    Returns: The edit distance between x and y.
+    Returns
+    -------
+    d: float
+        The edit distance between x and y.
+
     """
     # apply the internal edit distance function
     Ds, _, _, _, start_idx, _, _, _, _ = _edit_distance(x, y, grammar, deltas)
@@ -412,33 +499,49 @@ def _edit_distance(x, y, grammar, deltas):
     """ Computes the edit distance including all internal variables
     necessary during computation.
 
-    Returns:
-    x:       A list of objects of length m.
-    y:       Another list of objects of length n.
-    grammar: An ADP grammar with R nonterminals, K_rep replacements, K_del
-             deletions, and K_ins insertions. Refer to the documentation
-             above for more information.
-    deltas:  An algebra, i.e. a mapping from operation names to distance
-             functions OR a single distance function if the grammar supports
-             only a single replacement, deletion, and insertion operation.
+    Parameters
+    ----------
+    x: list
+        A list of objects of length m.
+    y: list
+        Another list of objects of length n.
+    grammar: class adp.Grammar
+        An ADP grammar with R nonterminals, K_rep replacements,
+        K_del deletions, and K_ins insertions. Refer to the documentation
+        above for more information.
+    deltas: dictionary
+        An algebra, i.e. a mapping from operation names to distance functions
+        OR a single distance function if the grammar supports only a single
+        replacement, deletion, and insertion operation.
 
-    Returns:
-    Ds: A R x m+1 x n+1 tensor containing the dynamic programming matrices
+    Returns
+    -------
+    Ds: array_like
+        A R x m+1 x n+1 tensor containing the dynamic programming matrices
         for all nonterminals.
-    Deltas_rep: A K_rep x m x n tensor containing the replacement costs for
+    Deltas_rep: array_like
+        A K_rep x m x n tensor containing the replacement costs for
         all replacements.
-    Deltas_del: A K_rep x m matrix containing the deletion costs for
+    Deltas_del: array_like
+        A K_rep x m matrix containing the deletion costs for
         all deletions.
-    Deltas_ins: A K_ins x n matrix containing the insertion costs for
+    Deltas_ins: array_like
+        A K_ins x n matrix containing the insertion costs for
         all insertions.
-    start_idx:  The index of the starting nonterminal.
-    accpt_idxs: The indices of accepting nonterminals.
-    adj_rep:    An adjacency list representation of the grammar rules for
-                replacement operations.
-    adj_del:    An adjacency list representation of the grammar rules for
-                deletion operations.
-    adj_ins:    An adjacency list representation of the grammar rules for
-                insertion operations.
+    start_idx: int
+        The index of the starting nonterminal.
+    accpt_idxs: list
+        The indices of accepting nonterminals.
+    adj_rep: list
+        An adjacency list representation of the grammar rules for
+        replacement operations.
+    adj_del: list
+        An adjacency list representation of the grammar rules for
+        deletion operations.
+    adj_ins: list
+        An adjacency list representation of the grammar rules for
+        insertion operations.
+
     """
     # check if the given algebra is compatible with the given grammar.
     if(isinstance(deltas, Callable)):
@@ -550,16 +653,24 @@ def backtrace(x, y, grammar, deltas):
     x and y, given the given ADP grammar and algebra. This mechanism
     is deterministic and will always prefer replacements over other options.
 
-    Args:
-    x:       a sequence of objects.
-    y:       another sequence of objects.
-    grammar: An ADP grammar. Refer to the documentation above for more
-             information.
-    deltas:  An algebra, i.e. a mapping from operation names to distance
-             functions OR a single distance function if the grammar supports
-             only a single replacement, deletion, and insertion operation.
+    Parameters
+    ----------
+    x: list
+        A list of objects.
+    y: list
+        Another list of objects.
+    grammar: class adp.Grammar
+        An ADP grammar. Refer to the documentation above for more information.
+    deltas: dictionary
+        An algebra, i.e. a mapping from operation names to distance functions
+        OR a single distance function if the grammar supports only a single
+        replacement, deletion, and insertion operation.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        a co-optimal alignment between x and y.
+
     """
     # apply the internal edit distance function
     Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)
@@ -664,20 +775,28 @@ def backtrace_stochastic(x, y, grammar, deltas):
     is stochastic and will return a random alignment.
 
     Note that the randomness does _not_ produce a uniform distribution over
-    all co-optimal alignments because reandom choices at the start of the
+    all co-optimal alignments because random choices at the start of the
     alignment process dominate. If you wish to characterize the overall
-    distribution accurately, use sed_backtrace_matrix instead.
+    distribution accurately, use backtrace_matrix instead.
 
-    Args:
-    x:       a sequence of objects.
-    y:       another sequence of objects.
-    grammar: An ADP grammar. Refer to the documentation above for more
-             information.
-    deltas:  An algebra, i.e. a mapping from operation names to distance
-             functions OR a single distance function if the grammar supports
-             only a single replacement, deletion, and insertion operation.
+    Parameters
+    ----------
+    x: list
+        A list of objects.
+    y: list
+        Another list of objects.
+    grammar: class adp.Grammar
+        An ADP grammar. Refer to the documentation above for more information.
+    deltas: dictionary
+        An algebra, i.e. a mapping from operation names to distance functions
+        OR a single distance function if the grammar supports only a single
+        replacement, deletion, and insertion operation.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        a co-optimal alignment between x and y.
+
     """
     # apply the internal edit distance function
     Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)
@@ -800,26 +919,36 @@ def backtrace_matrix(x, y, grammar, deltas):
     co-optimal alignments in which y[j] has been inserted using operation
     grammar._inss[k].
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    grammar: An ADP grammar. Refer to the documentation above for more
-             information.
-    deltas:  An algebra, i.e. a mapping from operation names to distance
-             functions OR a single distance function if the grammar supports
-             only a single replacement, deletion, and insertion operation.
+    Parameters
+    ----------
+    x: list
+        A list of objects.
+    y: list
+        Another list of objects.
+    grammar: class adp.Grammar
+        An ADP grammar. Refer to the documentation above for more information.
+    deltas: dictionary
+        An algebra, i.e. a mapping from operation names to distance functions
+        OR a single distance function if the grammar supports only a single
+        replacement, deletion, and insertion operation.
 
-    Returns:
-    P_rep: a tensor where P_rep[k, i, j] specifies the fraction of co-optimal
-           alignments in which node x[i] has been replaced with node y[j] using
-           operation grammar._reps[k].
-    P_del: a matrix where P_del[k, i] specifies the fraction of co-optimal
-           alignments in which x[i] has been deleted using operation
-           grammar._dels[k].
-    P_ins: a matrix where P_ins[k, j] specifies the fraction of co-optimal
-           alignments in which y[j] has been inserted using operation
-           grammar._inss[k].
-    k:     the number of co-optimal alignments.
+    Returns
+    -------
+    P_rep: array_like
+        a tensor where P_rep[k, i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been replaced with node y[j] using
+        operation grammar._reps[k].
+    P_del: array_like
+        a matrix where P_del[k, i] specifies the fraction of co-optimal
+        alignments in which x[i] has been deleted using operation
+        grammar._dels[k].
+    P_ins: array_like
+        a matrix where P_ins[k, j] specifies the fraction of co-optimal
+        alignments in which y[j] has been inserted using operation
+        grammar._inss[k].
+    k: int
+        the number of co-optimal alignments.
+
     """
     # apply the internal edit distance function
     Ds, Deltas_rep, Deltas_del, Deltas_ins, start_idx, accpt_idxs, adj_rep, adj_del, adj_ins = _edit_distance(x, y, grammar, deltas)

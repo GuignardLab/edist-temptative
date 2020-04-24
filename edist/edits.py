@@ -2,46 +2,54 @@
 Implements list edits, i.e. functions which take a list as input and
 return a changed list.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
 import copy
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
 class Edit(abc.ABC):
+    """ An abstract parent class for all edits.
 
+    """
     @abc.abstractmethod
     def apply(self, lst):
         """ Applies this edit to the given list and returns a copy of the
         list with the applied changes. The original list remains unchanged.
 
-        Args:
-        lst: a list
+        Parameters
+        ----------
+        lst: list
+            a list
 
-        Returns: a copy of the list with the applied edit.
+        Returns
+        -------
+        res: list
+            a copy of the list with the applied edit.
+
         """
         pass
 
@@ -50,14 +58,26 @@ class Edit(abc.ABC):
         """ Applies this edit to the given list. Note that this changes the
         input argument.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
+
         """
         pass
 
 
 class Replacement(Edit):
+    """ Replaces node self._index with label self._label.
 
+    Attributes
+    ----------
+    _index: int
+        The index of the node to be deleted.
+    _label: str
+        The new label for node self._index.
+
+    """
     def __init__(self, index, label):
         self._index = index
         self._label = label
@@ -65,10 +85,16 @@ class Replacement(Edit):
     def apply(self, lst):
         """ Replaces entry self._index with self._label.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
 
-        Returns: a copy of lst with the replaced element.
+        Returns
+        -------
+        res: list
+            a copy of the list with the applied edit.
+
         """
         lst = copy.copy(lst)
         self.apply_in_place(lst)
@@ -77,8 +103,11 @@ class Replacement(Edit):
     def apply_in_place(self, lst):
         """ Replaces entry self._index with self._label.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
+
         """
         lst[self._index] = self._label
 
@@ -93,17 +122,30 @@ class Replacement(Edit):
 
 
 class Deletion(Edit):
+    """ Deletes node self._index.
 
+    Attributes
+    ----------
+    _index: int
+        The index of the node to be deleted.
+
+    """
     def __init__(self, index):
         self._index = index
 
     def apply(self, lst):
         """ Deletes the self._indexth entry.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
 
-        Returns: a copy of lst where the self._indexth entry is deleted.
+        Returns
+        -------
+        res: list
+            a copy of the list with the applied edit.
+
         """
         lst = copy.copy(lst)
         self.apply_in_place(lst)
@@ -112,8 +154,11 @@ class Deletion(Edit):
     def apply_in_place(self, lst):
         """ Deletes the self._indexth entry.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
+
         """
         # delete the nodes entry at index
         del lst[self._index]
@@ -131,9 +176,13 @@ class Deletion(Edit):
 class Insertion(Edit):
     """ Inserts a new self._label entry at position self._index .
 
-    Attributes:
-    _index: The index at which this edit will be applied.
-    _label: The new entry.
+    Attributes
+    ----------
+    _index: int
+        The index at which this edit will be applied.
+    _label: str
+        The new entry.
+
     """
     def __init__(self, index, label):
         self._index = index
@@ -142,10 +191,16 @@ class Insertion(Edit):
     def apply(self, lst):
         """ Inserts a new self._label entry at position self._index.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
 
-        Returns: a copy of lst with the new inserted node.
+        Returns
+        -------
+        res: list
+            a copy of the list with the applied edit.
+
         """
         lst = copy.copy(lst)
         self.apply_in_place(lst)
@@ -154,8 +209,11 @@ class Insertion(Edit):
     def apply_in_place(self, lst):
         """ Inserts a new self._label entry at position self._index.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
+
         """
         lst.insert(self._index, self._label)
 
@@ -171,6 +229,7 @@ class Insertion(Edit):
 
 class Script(list, Edit):
     """ A list of Edits.
+
     """
     def __init__(self, lst = []):
         list.__init__(self, lst)
@@ -178,10 +237,16 @@ class Script(list, Edit):
     def apply(self, lst):
         """ Applies all edits in this script.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
 
-        Returns: a copy of lst with all edits applied.
+        Returns
+        -------
+        res: list
+            a copy of the list with the applied edits of this script.
+
         """
         # if this script is empty, just return the input
         if(not self):
@@ -194,8 +259,11 @@ class Script(list, Edit):
     def apply_in_place(self, lst):
         """ Applies all edits in this script in place.
 
-        Args:
-        lst: a list.
+        Parameters
+        ----------
+        lst: list
+            a list
+
         """
         for e in range(len(self)):
             self[e].apply_in_place(lst)
@@ -211,13 +279,21 @@ def alignment_to_script(alignment, x, y):
     (in descending order), and finally insertions (in ascending order),
     which simplifies conversion.
 
-    Args:
-    alignment: an Alignment object which maps between the given lists x and y.
-    x:         a list.
-    y:         another list.
+    Parameters
+    ----------
+    alignment: class alignment.Alignment
+        an Alignment object which maps between the given lists x and y.
+    x: list
+        a list.
+    y: list
+        another list.
 
-    Returns: A Script object script such that script.apply(x) = y and
-             where every tuple in the alignment has one corresponding edit.
+    Returns
+    -------
+    script: class edits.Script
+        A Script object script such that script.apply(x) = y and where every
+        tuple in the alignment has one corresponding edit.
+
     """
     script = Script()
     # iterate over the alignment and sort replacements, deletions, and

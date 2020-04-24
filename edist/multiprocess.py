@@ -2,32 +2,32 @@
 Provides general utility functions to compute pairwise edit distances in
 parallel.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import multiprocessing as mp
 import numpy as np
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -67,21 +67,29 @@ def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
     Optionally, it is possible to specify a component-wise distance function
     delta, which will then be forwarded to the input distance function
 
-    Args:
-    Xs:      a list of sequences or trees.
-    Ys:      another list of sequences or trees.
-    dist:    a function that takes an element of Xs as first and an element of
-             Ys as second input and returns a scalar distance value between
-             them.
-    delta:   a function that takes two elements of the input sequences or trees
-             as inputs and returns their pairwise distance, where
-             delta(x, None) should be the cost of deleting x and delta(None, y)
-             should be the cost of inserting y. If this is not None, dist needs
-             to accept an optional argument 'delta' as well. Defaults to None.
-    num_jobs: The number of jobs to be used for parallel processing.
-             Defaults to 8.
+    Parameters
+    ----------
+    Xs: list
+        a list of sequences or trees.
+    Ys: list
+        another list of sequences or trees.
+    dist: function
+        a function that takes an element of Xs as first and an element of
+        Ys as second input and returns a scalar distance value between them.
+    delta: function (default = None)
+        a function that takes two elements of the input sequences or trees
+        as inputs and returns their pairwise distance, where delta(x, None)
+        should be the cost of deleting x and delta(None, y) should be the cost
+        of inserting y. If this is not None, dist needs to accept an optional
+        argument 'delta' as well. Defaults to None.
+    num_jobs: int (default = 8)
+        The number of jobs to be used for parallel processing. Defaults to 8.
 
-    Returns: a len(Xs) x len(Ys) matrix of pairwise edit distance values.
+    Returns
+    -------
+    D: array_like
+        a len(Xs) x len(Ys) matrix of pairwise edit distance values.
+
     """
     K = len(Xs)
     L = len(Ys)
@@ -131,20 +139,27 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
     Optionally, it is possible to specify a component-wise distance function
     delta, which will then be forwarded to the input distance function
 
-    Args:
-    Xs:      a list of sequences or trees.
-    dist:    a function that takes two elements of Xs as first and second input
-             and returns a scalar distance value between them.
-    delta:   a function that takes two elements of the input sequences or trees
-             as inputs and returns their pairwise distance, where
-             delta(x, None) should be the cost of deleting x and delta(None, y)
-             should be the cost of inserting y. If this is not None, dist needs
-             to accept an optional argument 'delta' as well. Defaults to None.
-    num_jobs: The number of jobs to be used for parallel processing.
-             Defaults to 8.
+    Parameters
+    ----------
+    Xs: list
+        a list of sequences or trees.
+    dist: function
+        a function that takes two elements of Xs as inputs and returns a
+        scalar distance value between them.
+    delta: function (default = None)
+        a function that takes two elements of the input sequences or trees
+        as inputs and returns their pairwise distance, where delta(x, None)
+        should be the cost of deleting x and delta(None, y) should be the cost
+        of inserting y. If this is not None, dist needs to accept an optional
+        argument 'delta' as well. Defaults to None.
+    num_jobs: int (default = 8)
+        The number of jobs to be used for parallel processing. Defaults to 8.
 
-    Returns: a symmetric len(Xs) x len(Xs) matrix of pairwise edit distance
-             values.
+    Returns
+    -------
+    D: array_like
+        a symmetric len(Xs) x len(Xs) matrix of pairwise edit distance values.
+
     """
     K = len(Xs)
     # set up a parallel processing pool
@@ -218,20 +233,29 @@ def pairwise_backtraces(Xs, Ys, dist_backtrace, delta = None, num_jobs = 8):
     Optionally, it is possible to specify a component-wise distance function
     delta, which will then be forwarded to the input distance function
 
-    Args:
-    Xs:      a list of sequences or trees.
-    Ys:      another list of sequences or trees.
-    dist_backtrace: a function that takes an element of Xs as first and an
-              element of Ys as second input and returns an arbitrary object.
-    delta:   a function that takes two elements of the input sequences or trees
-             as inputs and returns their pairwise distance, where
-             delta(x, None) should be the cost of deleting x and delta(None, y)
-             should be the cost of inserting y. If this is not None, dist needs
-             to accept an optional argument 'delta' as well. Defaults to None.
-    num_jobs: The number of jobs to be used for parallel processing.
-             Defaults to 8.
+    Parameters
+    ----------
+    Xs: list
+        a list of sequences or trees.
+    Ys: list
+        another list of sequences or trees.
+    dist_backtrace: function
+        a function that takes an element of Xs as first and an
+        element of Ys as second input and returns an arbitrary object.
+    delta: function (default = None)
+        a function that takes two elements of the input sequences or trees
+        as inputs and returns their pairwise distance, where
+        delta(x, None) should be the cost of deleting x and delta(None, y)
+        should be the cost of inserting y. If this is not None, dist needs
+        to accept an optional argument 'delta' as well. Defaults to None.
+    num_jobs: int (default = 8)
+        The number of jobs to be used for parallel processing. Defaults to 8.
 
-    Returns: a len(Xs) x len(Ys) list of lists of pairwise backtraces.
+    Returns
+    -------
+    B: list
+        a len(Xs) x len(Ys) list of lists of pairwise backtraces.
+
     """
     K = len(Xs)
     L = len(Ys)

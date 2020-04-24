@@ -6,24 +6,25 @@ Tree Edit Distance Learning via Adaptive Symbol Embeddings. Proceedings of
 the 35th International Conference on Machine Learning (ICML 2018).
 URL: http://proceedings.mlr.press/v80/paassen18a.html
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import numpy as np
 from scipy.optimize import minimize
 from scipy.spatial.distance import pdist, squareform
@@ -33,9 +34,9 @@ import edist.sed as sed
 import edist.multiprocess as mp
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -51,25 +52,37 @@ class BEDL(BaseEstimator, ClassifierMixin):
     input symbols which yields an edit distance that makes classification
     with this classifier easier.
 
-    Attributes:
-    K:        The number of prototypes for the MGLVQ classifier.
-    T:        The number of learning epochs we use at most. Defaults to 5.
-    phi:      A squashing function to post-process each error term. Defaults
-              to the identity.
-    phi_grad: The gradient function corresponding to phi.
-    distance: The edit distance function that shall be learned. Defaults to
-              the sequence edit distance sed.sed.
-    distance_backtrace: The matrix backtracing function for the distance.
-              Defaults to sed.sed_backtrace_matrix. Note that this currently
-              does NOT support ADP because ADP returns a different backtracing
-              format.
-    _classifier: The learned MGLVQ classifier model.
-    _idx:        A mapping from alphabet to indices.
-    _embedding:  A len(alphabet) x len(alphabet) - 1 embedding matrix
-                 for all symbols in the alphabet.
-    _delta_obj:  An internal object to make storing of the delta function
-                 more efficient.
-    _delta:      The learned delta function.
+    Attributes
+    ----------
+    K: int
+        The number of prototypes for the MGLVQ classifier.
+    T: int
+        The number of learning epochs we use at most. Defaults to 5.
+    phi: function (default = identity)
+        A squashing function to post-process each error term. Defaults to the
+        identity.
+    phi_grad: function (default = one)
+        The gradient function corresponding to phi.
+    distance: function (default = sed.sed)
+        The edit distance function that shall be learned. Defaults to the
+        sequence edit distance sed.sed.
+    distance_backtrace: function (default = sed.sed_backtrace_matrix)
+        The matrix backtracing function for the distance.
+        Defaults to sed.sed_backtrace_matrix. Note that this currently does NOT
+        support ADP because ADP returns a different backtracing format.
+    _classifier: class proto_dist_ml.MGLVQ
+        The learned MGLVQ classifier model.
+    _idx: dictionary
+        A mapping from alphabet to indices.
+    _embedding: array_like
+        A len(alphabet) x len(alphabet) - 1 embedding matrix for all symbols in
+        the alphabet.
+    _delta_obj: class bedl.EmbeddingDelta
+        An internal object to make storing of the delta function more
+        efficient.
+    _delta: function
+        The learned delta function.
+
     """
     def __init__(self, K, T = 5, phi = None, phi_grad = None, distance = None, distance_backtrace = None):
         self.K = K
@@ -101,11 +114,20 @@ class BEDL(BaseEstimator, ClassifierMixin):
 
         For more details, please refer to the ICML 2018 paper.
 
-        Args:
-        X: a list of data points, each being either a list or a tree,
-           depending on the edit distance that shall be learned.
-        y: an array-like or list-like structure with labels for each
-           data point.
+        Arguments
+        ---------
+        X: list
+            a list of data points, each being either a list or a tree,
+            depending on the edit distance that shall be learned.
+        y: array_like or list
+            an array-like or list-like structure with labels for each
+            data point.
+
+        Returns
+        -------
+        class bedl.BEDL
+            self
+
         """
         # identify the alphabet from the training data
         alphabet = set()
@@ -172,16 +194,25 @@ class BEDL(BaseEstimator, ClassifierMixin):
         """ Computes the GLVQ loss and its gradient with respect to the
         embedding.
 
-        Args:
-        embedding: the current embedding parameters.
-        Ps:        the reduced matrix backtraces between the data and the
-                   prototypes.
-        y:         the data labels.
-        unique_labels: The result of np.unique(y)
+        Parameters
+        ----------
+        embedding: array_like
+            the current embedding parameters as a vector.
+        Ps: list
+            the reduced matrix backtraces between the data and the prototypes.
+        y: array_like
+            the data labels.
+        unique_labels: array_like
+            The result of np.unique(y)
 
-        Returns:
-        loss: The current GLVQ loss.
-        Grad: The gradient of the current GLVQ loss with respect to embedding.
+        Returns
+        -------
+        loss: float
+            The current GLVQ loss.
+        Grad: array_like
+            The gradient of the current GLVQ loss with respect to embedding
+            in flattened format.
+
         """
         # reshape embedding back into a matrix if its flattened for optimization
         is_flat = False
@@ -244,10 +275,16 @@ class BEDL(BaseEstimator, ClassifierMixin):
 def create_index(lst):
     """ Creates a map of list elements to indices.
 
-    Args:
-    lst: A list.
+    Parameters
+    ----------
+    lst: list
+        A list.
 
-    Returns: A map of list elements to indices.
+    Returns
+    -------
+    idx: dictionary
+        A map of list elements to indices.
+
     """
     idx = {}
     for i in range(len(lst)):
@@ -258,12 +295,19 @@ def create_index(lst):
 def index_data(Xs, idx):
     """ Indexes all data in the input dataset according to the given index.
 
-    Args:
-    Xs:  A list of data, each being either a list or a tree in
-         node list/adjacency list format.
-    idx: A map from symbols to indices.
+    Parameters
+    ----------
+    Xs: list
+        A list of data, each being either a list or a tree in
+        node list/adjacency list format.
+    idx: dictionary
+        A map from symbols to indices.
 
-    Returns: A copy of Xs, where each symbol is replaced by a symbol index.
+    Returns
+    -------
+    Ys: list
+        A copy of Xs, where each symbol is replaced by a symbol index.
+
     """
     Ys = []
     for X in Xs:
@@ -289,11 +333,17 @@ def initialize_embedding(size):
     """ Sets up a size-dimensional simplex with side length 1 and size+1
     vertices (i.e. an equilateral hyper-triangle).
 
-    Args:
-    size: the dimensionality of the simples.
+    Parameters
+    ----------
+    size: int
+        the dimensionality of the simplex.
 
-    Returns: A size x size matrix, where each row contains one vertix of
-             the simplex. The origin is the last vertex.
+    Returns
+    -------
+    embedding: array_like
+        A size x size matrix, where each row contains one vertex of
+        the simplex. The origin is the last vertex.
+
     """
     # set up the initial embedding matrix
     embedding = np.zeros((size, size))
@@ -314,8 +364,15 @@ class EmbeddingDelta:
     """ This class serves as a storage for an embedding to make the
     embedding delta function pickleable.
 
-    Attributes:
-    _Delta: The current symbol-to-symbol distance matrix
+    Parameters
+    ----------
+    embedding: array_like
+        An embedding matrix.
+
+    Attributes
+    ----------
+    _Delta: array_like
+        The current symbol-to-symbol distance matrix
     """
     def __init__(self, embedding):
         # extend the embedding by a zero vector
@@ -327,12 +384,18 @@ class EmbeddingDelta:
         """ Computes the distance between two embedding vectors identified
         by their index.
 
-        Args:
-        x: the left-hand-side index or None.
-        y: the right-hand-side index or None.
+        Parameters
+        ----------
+        x: int
+            the left-hand-side index or None.
+        y: int
+            the right-hand-side index or None.
 
-        Returns:
-        The Euclidean distance between the embedding for x and for y.
+        Returns
+        -------
+        d: float
+            The Euclidean distance between the embedding for x and for y.
+
         """
         if(x is None):
             if(y is None):
@@ -350,12 +413,17 @@ class EmbeddingDelta:
         """ Computes the distance between two symbols based on their
         embedding vectors.
 
-        Args:
-        x: a symbol.
-        y: another symbol.
+        Parameters
+        ----------
+        x: str
+            a symbol.
+        y: str
+            another symbol.
 
-        Returns:
-        The Euclidean distance between the embedding vectors for x and y.
+        Returns
+        -------
+        d: float
+            The Euclidean distance between the embedding for x and for y.
         """
         if(x is None):
             if(y is None):
@@ -372,18 +440,32 @@ class EmbeddingDelta:
 
 def reduce_backtrace(P, x, y, size):
     """ Transforms the input backtrace matrix P of size len(x) + 1 x len(y) + 1
-    into a reduced matrix Phat of size size x size which accumulates the
+    into a reduced matrix Phat of size size + 1 x size + 1 which accumulates the
     probabilities for same symbols being replaced, i.e. Phat[k, l] is the
     sum over all entries P[i, j] where x[i] = k and y[j] = l.
 
-    P: A len(x) + 1 x len(y) + 1 backtracing matrix between sequence x and y,
-       where P[i, j] is the probability of x[i] being replaced with y[j] in a
-       co-optimal alignment, P[i, len(y)] is the deletion probability for x[i]
-       and P[len(x), j] is the insertion probability for y[j]. The last row and
-       column are optional (as in case of DTW).
-    X:  A list of objects, either sequences or trees.
-    Y:  A list of objects, either sequences or trees.
-    size: The alphabet size.
+    Parameters
+    ----------
+    P: array_like
+        A len(x) + 1 x len(y) + 1 backtracing matrix between sequence x and y,
+        where P[i, j] is the probability of x[i] being replaced with y[j] in a
+        co-optimal alignment, P[i, len(y)] is the deletion probability for x[i]
+        and P[len(x), j] is the insertion probability for y[j]. The last row
+        and column are optional (as in case of DTW).
+    X: list
+        A list of objects, either sequences or trees.
+    Y: list
+        A list of objects, either sequences or trees.
+    size: int
+        The alphabet size.
+
+    Returns
+    -------
+    Phat: array_like
+        A size+1 x size+1 matrix which accumulates the probabilities for same
+        symbols being replaced, i.e. Phat[k, l] is the sum over all entries
+        P[i, j] where x[i] = k and y[j] = l.
+
     """
     # extract the node list from trees
     if(isinstance(x, tuple)):

@@ -1,33 +1,33 @@
 """
 Provides general utility functions to process trees.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
 import os
 import numpy as np
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -35,12 +35,21 @@ def root(adj):
     """ Returns the root of a tree and raises an error if the input adjacency
     matrix does not correspond to a tree.
 
-    Args:
-    adj: a directed graph in adjacency list format.
+    Parameters
+    ----------
+    adj: list
+        a directed graph in adjacency list format.
 
-    Returns: the index of the root of the tree.
+    Returns
+    -------
+    root: int
+        the index of the root of the tree.
 
-    Throws: throws an exception if the given adjacency list is not a tree.
+    Raises
+    ------
+    ValueError
+        if the given adjacency list does not form a tree.
+
     """
     if(not adj):
         raise ValueError("The input tree is empty!")
@@ -68,10 +77,16 @@ def check_tree_structure(adj):
     an exception if that fails. This is valid because trees are the subclass
     of directed graphs with a unique parent.
 
-    Args:
-    adj: a directed graph in adjacency list format.
+    Parameters
+    ----------
+    adj: list
+        a directed graph in adjacency list format.
 
-    Throws: throws an exception if the given adjacency list is not a tree.
+    Raises
+    ------
+    ValueError
+        if the given adjacency list does not form a tree.
+
     """
     m = len(adj)
     # initialize an undefined parent array
@@ -97,13 +112,21 @@ def check_dfs_structure(adj, i = 0):
     We verify this by performing a depth-first search over the tree and
     checking whether the indices are equivalent
 
-    Args:
-    adj: a directed graph in adjacency list format.
+    Parameters
+    ----------
+    adj: list
+        a directed graph in adjacency list format.
 
-    Returns: the size of the input tree, i.e. the last DFS index.
+    Returns
+    -------
+    size: int
+        the size of the input tree, i.e. the last DFS index.
 
-    Throws: throws an exception if the given adjacency list is not in DFS
-    format.
+    Raises
+    ------
+    ValueError
+        if the given adjacency list is not in DFS format.
+
     """
     if(not adj):
         return 0
@@ -124,11 +147,18 @@ def to_dfs_structure(nodes, adj):
     Note that this method performs a copy and leaves the original tree
     untouched.
 
-    Args:
-    nodes: A node list.
-    adj:   An adjacency list.
+    Parameters
+    ----------
+    nodes: list
+        A node list.
+    adj: list
+        An adjacency list.
 
-    Throws: throws an exception if the input is not a tree.
+    Raises
+    ------
+    ValueError
+        if the input is not a tree.
+
     """
     # initialize tree copy
     nodes_dfs = []
@@ -157,13 +187,20 @@ def _to_dfs_structure(nodes_orig, adj_orig, nodes_dfs, adj_dfs, i):
 def to_json(filename, nodes, adj):
     """ Writes a tree in node list/adjacency list format to a JSON file.
 
-    Args:
-    filename: The filename for the resulting JSON file.
-    nodes:    The node list of the tree.
-    adj:      The adjacency list of the tree.
+    Parameters
+    ----------
+    filename: str
+        The filename for the resulting JSON file.
+    nodes: list
+        The node list of the tree.
+    adj: list
+        The adjacency list of the tree.
 
-    Throws: Throws an exception if the file is not accessible or the JSON
-    writeout fails.
+    Raises
+    ------
+    Exception
+        if the file is not accessible or the JSON writeout fails.
+
     """
     with open(filename, 'w') as json_file:
         json.dump({'nodes' : nodes, 'adj' : adj}, json_file, indent='\t')
@@ -172,17 +209,25 @@ def to_json(filename, nodes, adj):
 def from_json(filename):
     """Loads a tree in node list/adjacency list format from a JSON file.
 
-    Args:
-    filename: A JSON filename containing tree data as written by the to_json
-              method.
+    Parameters
+    ----------
+    filename: str
+        A JSON filename containing tree data as written by the to_json method.
 
-    Returns:
-    nodes: The node list of the tree.
-    adj:   The adjacency list of the tree.
+    Returns
+    -------
+    nodes: list
+        The node list of the tree.
+    adj: list
+        The adjacency list of the tree.
 
-    Throws: Throws an exception if the given file is not accessible, if the
-            JSON data is malformed, if the parsed data is not a tree, or if
-            the parsed tree is not in depth first search order.
+    Raises
+    ------
+    Exception
+        if the given file is not accessible, if the JSON data is malformed,
+        if the parsed data is not a tree, or if the parsed tree is not in
+        depth first search order.
+
     """
     with open(filename, 'r') as json_file:
         tree = json.load(json_file)
@@ -196,16 +241,25 @@ def dataset_from_json(path):
     """ Reads trees in node list/adjacency list format from all JSON files in
     the given directory.
 
-    Args:
-    path: a path to a directory which contains JSON files.
+    Parameters
+    ----------
+    path: str
+        a path to a directory which contains JSON files.
 
-    Returns:
-    X:         A list of tuples in node list/adjacency list format.
-    filenames: A list of filenames from which we read the trees.
+    Returns
+    -------
+    X: list
+        A list of tuples in node list/adjacency list format.
+    filenames: list
+        A list of filenames from which we read the trees.
 
-    Throws: throws an exception if the file access does not work, if
-    the JSON data is malformed, if the parsed data is not a tree, or
-    if the parsed tree is not in depth first search order.
+    Raises
+    ------
+    Exception
+        if the file access does not work, if some JSON data is malformed,
+        if a parsed data is not a tree, or if a parsed tree is not in depth
+        first search order.
+
     """
     if(not os.path.isdir(path)):
         raise OSError('%s is not a directory or was not found' % str(path))
@@ -232,16 +286,22 @@ def dataset_from_json(path):
 def tree_to_string(nodes, adj, indent = False, with_indices = False):
     """ Prints a tree in node list/adjacency list format as string.
 
-    Args:
-    nodes:  The node list of the tree.
-    adj:    The adjacency list of the tree.
-    indent: A boolean flag; if True, each node is printed on a new
-            line. False per default.
-    with_indices: A boolean flag; if True, each node is printed with its
-                  index.
+    Parameters
+    ----------
+    nodes: list
+        The node list of the tree.
+    adj: list
+        The adjacency list of the tree.
+    indent: bool (default = False)
+        A boolean flag; if True, each node is printed on a new line.
+    with_indices: bool (default = False)
+        A boolean flag; if True, each node is printed with its index.
 
-    Throws: Throws an exception if the adjacency list does not correspond
-            to a tree.
+    Raises
+    ------
+    ValueError
+        if the adjacency list does not correspond to a tree.
+
     """
     r = root(adj)
     if(indent):
@@ -277,13 +337,22 @@ def subtree(nodes, adj, i):
     """ Returns the subtree rooted at node i in node list/adjacency list
     format.
 
-    Args:
-    nodes: The node list of the tree.
-    adj:   The adjacency list of the tree.
-    i:     The index of the desired subtree.
+    Parameters
+    ----------
+    nodes: list
+        The node list of the tree.
+    adj: list
+        The adjacency list of the tree.
+    i: int
+        The index of the desired subtree.
 
-    Returns: The subtree rooted at node i in node list/adjacency list
-    format.
+    Returns
+    -------
+    nodes_sub: list
+        The node list of the subtree rooted at i.
+    adj_sub: list
+        The adajency list of the subtree rooted at i.
+
     """
     # perform a depth-first-search from node i to construct the tree.
     nodes_dfs = []
@@ -295,12 +364,18 @@ def parents(adj):
     """ Returns the parent representation of the tree with the given
     adjacency list.
 
-    Args:
-    adj: an adjacency list.
+    Parameters
+    ----------
+    adj: list
+        The adjacency list of the tree.
 
-    Return: a numpy integer array with len(adj) elements, where the ith
-    element contains the index of the parent of the ith node.
-    Nodes without children contain the entry -1.
+    Returns
+    -------
+    par: int array
+        a numpy integer array with len(adj) elements, where the ith
+        element contains the index of the parent of the ith node.
+        Nodes without children contain the entry -1.
+
     """
     par = np.full(len(adj), -1, dtype=int)
     for i in range(len(adj)):

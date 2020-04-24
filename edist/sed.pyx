@@ -1,26 +1,27 @@
 #!python
 #cython: language_level=3
 """
-Implements the sequence edit distance and its backtracing in cython.
+Implements the sequence edit distance of Levenshtein (1965) and its
+backtracing in cython.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
 import heapq
@@ -31,28 +32,37 @@ cimport cython
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
+
 
 ###################################
 # Edit Distance with Custom Delta #
 ###################################
 
-def sed(x, y, delta):
+def sed(x, y, delta = None):
     """ Computes the sequence edit distance between the input sequence
     x and the input sequence y, given the element-wise distance function delta.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function (default = None)
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them. If None, this
+        method calls standard_sed instead.
 
-    Returns: the sequence edit distance between x and y according to
-             delta.
+    Returns
+    -------
+    d: float
+        the sequence edit distance between x and y according to delta.
+
     """
     if(delta is None):
         return float(standard_sed(x, y))
@@ -60,7 +70,7 @@ def sed(x, y, delta):
     return D[0,0]
 
 def _sed(x, y, delta):
-    """ Internal function. Call _sed instead. """
+    """ Internal function. Call sed instead. """
     cdef int m = len(x)
     cdef int n = len(y)
     # First, compute all pairwise replacements
@@ -97,13 +107,19 @@ cdef void sed_c(const double[:,:] Delta, const double[:] Delta_del, const double
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.
 
-    Args:
-    Delta:   a m x n matrix containing the pairwise element distances.
-    Delta_del: a m x 1 matrix containing deletion costs.
-    Delta_ins: a 1 x n matrix containing insertion costs.
-    D:       an m+1 x n+1 matrix to which the output will be written.
-             The sequence edit distance will be in cell [0, 0]
-             after the computation is finished.
+    Arguments
+    ---------
+    Delta: double matrix
+        a m x n matrix containing the pairwise element distances.
+    Delta_del: double array
+        a m-element vector containing deletion costs.
+    Delta_ins: double array
+        a n-element vector containing insertion costs.
+    D: double matrix
+        an m+1 x n+1 matrix to which the output will be written.
+        The sequence edit distance will be in cell [0, 0] after the computation
+        is finished.
+
     """
     cdef int m = Delta.shape[0]
     cdef int n = Delta.shape[1]
@@ -127,12 +143,20 @@ cdef void sed_c(const double[:,:] Delta, const double[:] Delta_del, const double
 cdef double min3(double a, double b, double c) nogil:
     """ Computes the minimum of three numbers.
 
-    Args:
-    a: a number
-    b: another number
-    c: yet another number
+    Parameters
+    ----------
+    a: double
+        a number
+    b: double
+        another number
+    c: double
+        yet another number
 
-    Returns: min({a, b, c})
+    Returns
+    -------
+    min3: double
+        min({a, b, c})
+
     """
     if(a < b):
         if(a < c):
@@ -151,18 +175,28 @@ cdef double min3(double a, double b, double c) nogil:
 
 cdef double _BACKTRACE_TOL = 1E-5
 
-def sed_backtrace(x, y, delta):
+def sed_backtrace(x, y, delta = None):
     """ Computes a co-optimal alignment between the two input sequences
     x and y, given the element-wise distance function delta. This mechanism
     is deterministic and will always prefer replacements over other options.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function (default = None)
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them. If None, this
+        method calls standard_sed_backtrace instead.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the sequence edit
+        distance.
+
     """
     if(delta is None):
         return standard_sed_backtrace(x, y)
@@ -206,7 +240,7 @@ def sed_backtrace(x, y, delta):
         j += 1
     return alignment
 
-def sed_backtrace_stochastic(x, y, delta):
+def sed_backtrace_stochastic(x, y, delta = None):
     """ Computes a co-optimal alignment between the two input sequences
     x and y, given the element-wise distance function delta. This mechanism
     is stochastic and will return a random co-optimal alignment.
@@ -214,15 +248,25 @@ def sed_backtrace_stochastic(x, y, delta):
     Note that the randomness does _not_ produce a uniform distribution over
     all co-optimal alignments because reandom choices at the start of the
     alignment process dominate. If you wish to characterize the overall
-    distribution accurately, use sed_backtrace_matrix instead. 
+    distribution accurately, use sed_backtrace_matrix instead.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function (default = None)
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them. If None, this
+        method calls standard_sed_backtrace_stochastic instead.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the sequence edit
+        distance.
+
     """
     if(delta is None):
         return standard_sed_backtrace_stochastic(x, y)
@@ -310,25 +354,35 @@ def sed_backtrace_stochastic(x, y, delta):
         j += 1
     return alignment
 
-def sed_backtrace_matrix(x, y, delta):
+def sed_backtrace_matrix(x, y, delta = None):
     """ Computes a matrix, summarizing all co-optimal alignments between
     x and y in a matrix P, where entry P[i, j] specifies the fraction of
     co-optimal alignments in which node x[i] has been aligned with node y[j].
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function (default = None)
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them. If None, this
+        method calls standard_sed_backtrace_matrix instead.
 
-    Returns:
-    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
-       alignments in which node x[i] has been aligned with node y[j].
-       P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
-       the fraction of insertions of node y[j].
-    K: a matrix that contains the counts for all co-optimal alignments in which
-       node x[i] has been aligned with node y[j].
-    k: the number of co-optimal alignments overall, such that P = K / k.
+    Returns
+    -------
+    P: array_like
+        a matrix, where entry P[i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been aligned with node y[j].
+        P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
+        the fraction of insertions of node y[j].
+    K: array_like
+        a matrix that contains the counts for all co-optimal alignments in
+        which node x[i] has been aligned with node y[j].
+    k: int
+        the number of co-optimal alignments overall, such that P = K / k.
+
     """
     if(delta is None):
         return standard_sed_backtrace_matrix(x, y)
@@ -460,11 +514,18 @@ def standard_sed(x, y):
     """ Computes the standard sequence edit distance/Levenshtein distance
     between the input sequence x and the input sequence y.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
 
-    Returns: the standard sequence edit distance between x and y.
+    Returns
+    -------
+    d: int
+        the standard sequence edit distance between x and y.
+
     """
     _, D = _standard_sed(x, y)
     return D[0, 0]
@@ -494,11 +555,18 @@ def sed_string(str x, str y):
     between two input strings x and y, using the Kronecker distance as
     element-wise distance measure.
 
-    Args:
-    x:     a string.
-    y:     another string.
+    Parameters
+    ----------
+    x: str
+        a string.
+    y: str
+        another string.
 
-    Returns: the standard sequence edit distance between x and y.
+    Returns
+    -------
+    d: int
+        the standard sequence edit distance between x and y.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -523,11 +591,15 @@ cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) nogil:
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.
 
-    Args:
-    Delta:   a m x n matrix containing the pairwise element distances.
-    D:       another m x n matrix to which the output will be written.
-             The sequence edit distance will be in cell [0, 0]
-             after the computation is finished.
+    Parameters
+    ----------
+    Delta: long matrix
+        a m x n matrix containing the pairwise element distances.
+    D: long matrix
+        another m x n matrix to which the output will be written.
+        The sequence edit distance will be in cell [0, 0] after the computation
+        is finished.
+
     """
     cdef int m = Delta.shape[0]
     cdef int n = Delta.shape[1]
@@ -551,12 +623,20 @@ cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) nogil:
 cdef long min3_int(long a, long b, long c) nogil:
     """ Computes the minimum of three numbers.
 
-    Args:
-    a: a number
-    b: another number
-    c: yet another number
+    Parameters
+    ----------
+    a: int
+        a number
+    b: int
+        another number
+    c: int
+        yet another number
 
-    Returns: min({a, b, c})
+    Returns
+    -------
+    min3: int
+        min({a, b, c})
+
     """
     if(a < b):
         if(a < c):
@@ -575,14 +655,22 @@ cdef long min3_int(long a, long b, long c) nogil:
 
 def standard_sed_backtrace(x, y):
     """ Computes a co-optimal alignment between the two input sequences
-    x and y. This mechanism
-    is deterministic and will always prefer replacements over other options.
+    x and y. This mechanism is deterministic and will always prefer
+    replacements over other options.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the sequence edit
+        distance.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -631,13 +719,21 @@ def standard_sed_backtrace_stochastic(x, y):
     Note that the randomness does _not_ produce a uniform distribution over
     all co-optimal alignments because reandom choices at the start of the
     alignment process dominate. If you wish to characterize the overall
-    distribution accurately, use sed_backtrace_matrix instead. 
+    distribution accurately, use sed_backtrace_matrix instead.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the sequence edit
+        distance.
+
     """
 
     cdef int m = len(x)
@@ -728,18 +824,26 @@ def standard_sed_backtrace_matrix(x, y):
     x and y in a matrix P, where entry P[i, j] specifies the fraction of
     co-optimal alignments in which node x[i] has been aligned with node y[j].
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
 
-    Returns:
-    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
-       alignments in which node x[i] has been aligned with node y[j].
-       P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
-       the fraction of insertions of node y[j].
-    K: a matrix that contains the counts for all co-optimal alignments in which
-       node x[i] has been aligned with node y[j].
-    k: the number of co-optimal alignments overall, such that P = K / k.
+    Returns
+    -------
+    P: array_like
+        a matrix, where entry P[i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been aligned with node y[j].
+        P[i, n] contains the fraction of deletions of node x[i] and P[m, j]
+        the fraction of insertions of node y[j].
+    K: array_like
+        a matrix that contains the counts for all co-optimal alignments in
+        which node x[i] has been aligned with node y[j].
+    k: int
+        the number of co-optimal alignments overall, such that P = K / k.
+
     """
 
     cdef int m = len(x)

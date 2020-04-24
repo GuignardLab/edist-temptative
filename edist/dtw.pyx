@@ -1,26 +1,27 @@
 #!python
 #cython: language_level=3
 """
-Implements the dynamic time warping distance and its backtracing in cython.
+Implements the dynamic time warping distance of Vintsyuk (1968) and its
+backtracing in cython.
 
-Copyright (C) 2019
-Benjamin Paaßen
-AG Machine Learning
-Bielefeld University
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# Copyright (C) 2019-2020
+# Benjamin Paaßen
+# AG Machine Learning
+# Bielefeld University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
 import heapq
@@ -31,9 +32,9 @@ cimport cython
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019, Benjamin Paaßen'
+__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -41,14 +42,21 @@ def dtw(x, y, delta):
     """ Computes the dynamic time warping distance between the input sequence
     x and the input sequence y, given the element-wise distance function delta.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them.
 
-    Returns: the dynamic time warping distance between x and y according to
-             delta.
+    Returns
+    -------
+    d: float
+        the dynamic time warping distance between x and y according to delta.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -73,11 +81,18 @@ def dtw_numeric(double[:] x, double[:] y):
     """ Computes the dynamic time warping distance between two input arrays x
     and y, using the absolute value as element-wise distance measure.
 
-    Args:
-    x:     an array of doubles.
-    y:     another array of doubles.
+    Parameters
+    ----------
+    x: array_like
+        an array of doubles.
+    y: array_like
+        another array of doubles.
 
-    Returns: the dynamic time warping distance between x and y.
+    Returns
+    -------
+    d: float
+        the dynamic time warping distance between x and y.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -106,11 +121,18 @@ def dtw_manhattan(double[:,:] x, double[:,:] y):
     input arrays x and y, using the Manhattan distance as element-wise
     distance measure.
 
-    Args:
-    x:     an array of doubles.
-    y:     another array of doubles.
+    Parameters
+    ----------
+    x: array_like
+        a m x K matrix of doubles.
+    y: array_like
+        a n x K matrix of doubles.
 
-    Returns: the dynamic time warping distance between x and y.
+    Returns
+    -------
+    d: float
+        the dynamic time warping distance between x and y.
+
     """
     cdef int m = x.shape[0]
     cdef int n = y.shape[0]
@@ -146,11 +168,18 @@ def dtw_euclidean(double[:,:] x, double[:,:] y):
     input arrays x and y, using the Euclidean distance as element-wise
     distance measure.
 
-    Args:
-    x:     an array of doubles.
-    y:     another array of doubles.
+    Parameters
+    ----------
+    x: array_like
+        a m x K matrix of doubles.
+    y: array_like
+        a n x K matrix of doubles.
 
-    Returns: the dynamic time warping distance between x and y.
+    Returns
+    -------
+    d: float
+        the dynamic time warping distance between x and y.
+
     """
     cdef int m = x.shape[0]
     cdef int n = y.shape[0]
@@ -184,11 +213,18 @@ def dtw_string(str x, str y):
     input strings x and y, using the Kronecker distance as element-wise
     distance measure.
 
-    Args:
-    x:     a string.
-    y:     another string.
+    Parameters
+    ----------
+    x: str
+        a string.
+    y: str
+        another string.
 
-    Returns: the dynamic time warping distance between x and y.
+    Returns
+    -------
+    d: float
+        the dynamic time warping distance between x and y.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -216,11 +252,15 @@ cdef void dtw_c(const double[:,:] Delta, double[:,:] D) nogil:
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.
 
-    Args:
-    Delta:   a m x n matrix containing the pairwise element distances.
-    D:       another m x n matrix to which the output will be written.
-             The dynamic time warping distance will be in cell [0, 0]
-             after the computation is finished.
+    Parameters
+    ----------
+    Delta: array_like
+        a m x n matrix containing the pairwise element distances.
+    D: array:like
+        another m x n matrix to which the output will be written.
+        The dynamic time warping distance will be in cell [0, 0] after the
+        computation is finished.
+
     """
     cdef int i
     cdef int j
@@ -240,12 +280,20 @@ cdef void dtw_c(const double[:,:] Delta, double[:,:] D) nogil:
 cdef double min3(double a, double b, double c) nogil:
     """ Computes the minimum of three numbers.
 
-    Args:
-    a: a number
-    b: another number
-    c: yet another number
+    Parameters
+    ----------
+    a: double
+        a number
+    b: double
+        another number
+    c: double
+        yet another number
 
-    Returns: min({a, b, c})
+    Returns
+    -------
+    min3: double
+        min({a, b, c})
+
     """
     if(a < b):
         if(a < c):
@@ -267,13 +315,22 @@ def dtw_backtrace(x, y, delta):
     x and y, given the element-wise distance function delta. This mechanism
     is deterministic and will always prefer replacements over other options.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to dynamic time
+        warping.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -334,13 +391,22 @@ def dtw_backtrace_stochastic(x, y, delta):
     alignment process dominate. If you wish to characterize the overall
     distribution accurately, use sed_backtrace_matrix instead.
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them.
 
-    Returns: a co-optimal alignment.Alignment between x and y.
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to dynamic time
+        warping.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
@@ -431,18 +497,27 @@ def dtw_backtrace_matrix(x, y, delta):
     x and y in a matrix P, where entry P[i, j] specifies the fraction of
     co-optimal alignments in which node x[i] has been aligned with node y[j].
 
-    Args:
-    x:     a sequence of objects.
-    y:     another sequence of objects.
-    delta: a function that takes an element of x as first and an element of y
-           as second input and returns the distance between them.
+    Parameters
+    ----------
+    x: list
+        a sequence of objects.
+    y: list
+        another sequence of objects.
+    delta: function
+        a function that takes an element of x as first and an element of y
+        as second input and returns the distance between them.
 
-    Returns:
-    P: a matrix, where entry P[i, j] specifies the fraction of co-optimal
-       alignments in which node x[i] has been aligned with node y[j].
-    K: a matrix that contains the counts for all co-optimal alignments in which
-       node x[i] has been aligned with node y[j].
-    k: the number of co-optimal alignments overall, such that P = K / k.
+    Returns
+    -------
+    P: array_like
+        a matrix, where entry P[i, j] specifies the fraction of co-optimal
+        alignments in which node x[i] has been aligned with node y[j].
+    K: array_like
+        a matrix that contains the counts for all co-optimal alignments in
+        which node x[i] has been aligned with node y[j].
+    k: int
+        the number of co-optimal alignments overall, such that P = K / k.
+
     """
     cdef int m = len(x)
     cdef int n = len(y)
