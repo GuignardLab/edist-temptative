@@ -28,6 +28,10 @@ extensions = [
         "edist.ted",
         ["edist/ted" + ext],
     ),
+    Extension(
+        "edist.seted",
+        ["edist/seted" + ext],
+    ),
 ]
 
 if(USE_CYTHON):
