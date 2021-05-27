@@ -23,17 +23,18 @@ Tests the unordered tree edit distance implementation.
 import unittest
 import uted
 import numpy as np
+from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '0.0.1'
+__version__ = '1.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'benjamin.paassen@hu-berlin.de'
 
 class TestUTED(unittest.TestCase):
 
-    def test_uted_constrained(self):
+    def test_uted(self):
 
         # test a trivial example: aligning a single leaf
         x_nodes = ['a']
@@ -89,6 +90,36 @@ class TestUTED(unittest.TestCase):
         # test symmetry
         d = uted.uted(y_nodes, y_adj, x_nodes, x_adj)
         self.assertAlmostEqual(2., d)
+
+    def test_uted_backtrace(self):
+        # test a trivial example: aligning a single leaf
+        x_nodes = ['a']
+        x_adj   = [[]]
+        y_nodes = ['a', 'c', 'd', 'e', 'f']
+        y_adj   = [[1, 4], [2, 3], [], [], []]
+        alignment = uted.uted_backtrace(x_nodes, x_adj, y_nodes, y_adj)
+        expected_alignment = Alignment()
+        expected_alignment.append_tuple(0, 0)
+        expected_alignment.append_tuple(-1, 1)
+        expected_alignment.append_tuple(-1, 2)
+        expected_alignment.append_tuple(-1, 3)
+        expected_alignment.append_tuple(-1, 4)
+        self.assertEqual(expected_alignment, alignment)
+
+        # test an example with two full trees
+        x_nodes = ['a', 'b', 'c', 'e', 'd']
+        x_adj   = [[1], [2], [3, 4], [], []]
+        y_nodes = ['a', 'c', 'd', 'e', 'f']
+        y_adj   = [[1, 4], [2, 3], [], [], []]
+        alignment = uted.uted_backtrace(x_nodes, x_adj, y_nodes, y_adj)
+        expected_alignment = Alignment()
+        expected_alignment.append_tuple(0, 0)
+        expected_alignment.append_tuple(1, -1)
+        expected_alignment.append_tuple(2, 1)
+        expected_alignment.append_tuple(3, 3)
+        expected_alignment.append_tuple(4, 2)
+        expected_alignment.append_tuple(-1, 4)
+        self.assertEqual(expected_alignment, alignment)
 
     def test_munkres(self):
         C = np.array([[7., 5., 11.2], [5., 4., 1.], [9.3, 3., 2.]])

@@ -28,6 +28,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 cimport cython
 from numpy.math cimport INFINITY
+from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
@@ -98,7 +99,7 @@ def uted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
                 d += delta(x_nodes[i], None)
             return d
 
-    # Set up an array to store edit dists for replacements,
+    # Set up an array to store edit costs for replacements,
     # deletions, and insertions
     Delta = np.ones((m+1, n+1))
     cdef double[:,:] Delta_view = Delta
@@ -120,7 +121,7 @@ def uted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
             Delta_view[m,j] = delta(None, y_nodes[j])
 
     # compute the actual tree edit distance
-    _, D_forest, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
+    D_forest, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
 
     return D_tree[0,0]
 
@@ -151,7 +152,7 @@ def _uted(x_nodes, x_adj, y_nodes, y_adj, Delta):
     # call the c routine
     uted_c_(A_x, deg_x, A_y, deg_y, Delta, D_forest, D_tree, C, Stars, Primes, row_covers, col_covers, path, pi)
 
-    return Delta, D_forest, D_tree
+    return D_forest, D_tree
 
 def adjmat_(adj):
     """ Converts an adjacency list into an int array """
@@ -254,7 +255,7 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                 for k in range(m_i):
                     i_k = A_x[i, k]
                     # accordingly, we need to consider the cost of editing
-                    # the children of node i_c with the children of j,
+                    # the children of node i_k with the children of j,
                     # plus the cost of deleting all other children of i.
                     tmp_cost = D_forest[i_k, j] + D_forest[i, n] - D_forest[i_k, n]
                     if tmp_cost < del_cost:
@@ -265,7 +266,7 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                 for l in range(n_j):
                     j_l = A_y[j, l]
                     # accordingly, we need to consider the cost of editing
-                    # the children of node i to the children of j_c,
+                    # the children of node i to the children of j_l,
                     # plus the cost of inserting all other children of j.
                     tmp_cost = D_forest[i, j_l] + D_forest[m, j] - D_forest[m, j_l]
                     if tmp_cost < ins_cost:
@@ -359,13 +360,15 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
             # First, we could delete node i and all subtrees except a
             # single one.
             if m_i == 0:
-                del_cost = D_tree[m, j]
+                # if i has no children, we delete i and insert
+                # everything in j
+                del_cost = Delta[i, n] + D_tree[m, j]
             else:
                 del_cost = INFINITY
                 for k in range(m_i):
                     i_k = A_x[i, k]
                     # accordingly, we need to consider the cost of editing
-                    # tree i_c into tree j plus the cost of deleting all other
+                    # tree i_k into tree j plus the cost of deleting all other
                     # children of i.
                     tmp_cost = D_tree[i_k, j] + D_tree[i, n] - D_tree[i_k, n]
                     if tmp_cost < del_cost:
@@ -373,13 +376,15 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
             # Second, we could insert node j and all children of j except
             # for a single one.
             if n_j == 0:
-                ins_cost = D_tree[i, n]
+                # if j has no children, we insert j and delete
+                # everything in i
+                ins_cost = Delta[m, j] + D_tree[i, n]
             else:
                 ins_cost = INFINITY
                 for l in range(n_j):
                     j_l = A_y[j, l]
                     # accordingly, we need to consider the cost of editing
-                    # tree i into tree j_c plus the cost o inserting all other
+                    # tree i into tree j_l plus the cost o inserting all other
                     # children of j.
                     tmp_cost = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
                     if tmp_cost < ins_cost:
@@ -419,6 +424,9 @@ cdef double min3(double a, double b, double c) nogil:
         else:
             return c
 
+###############################
+# Munkres/Hungarian algorithm #
+###############################
 
 @cython.boundscheck(False)
 cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
@@ -606,8 +614,6 @@ cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
         # print('new stars after step 4\n%s' % str(np.asarray(Stars)))
         # print('new col covers after step 4: %s' % str(np.asarray(col_covers)))
 
-
-
 def munkres(C):
     """ This calls the Munkres algorithm to find a minimal
     matching for the given cost matrix C. Note that this function
@@ -638,3 +644,328 @@ def munkres(C):
     pi = np.zeros(m, dtype=int)
     munkres_(C, Stars, Primes, row_covers, col_covers, path, pi)
     return pi
+
+
+
+#########################
+# Backtracing Functions #
+#########################
+
+cdef double _BACKTRACE_TOL = 1E-5
+
+def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
+    """ Computes the unordered tree edit distance between the trees x and y,
+    each described by a list of nodes and an adjacency list adj, where adj[i]
+    is a list of indices pointing to children of node i. This function
+    returns an alignment representation of the distance.
+
+    Note that we assume a proper depth-first-search order of adj, i.e. for
+    every node i, the following indices are all part of the subtree rooted at
+    i until we hit the index of i's right sibling or the end of the tree.
+
+    Parameters
+    ----------
+    x_nodes: list or tuple
+        a list of nodes for tree x OR a tuple of the form (x_nodes, x_adj).
+    x_adj: list or tuple
+        an adjacency list for tree x OR a tuple of the form (y_nodes, y_adj).
+    y_nodes: list (default = x_adj[0])
+        a list of nodes for tree y.
+    y_adj: list (default = x_adj[1])
+        an adjacency list for tree y.
+    delta: function (default = None)
+        a function that takes two nodes as inputs and returns their pairwise
+        distance, where delta(x, None) should be the cost of deleting x and
+        delta(None, y) should be the cost of inserting y. If undefined, this
+        method calls standard_ted instead.
+
+    Returns
+    -------
+    alignment: class alignment.Alignment
+        A co-optimal alignment between x and y according to the unordered tree
+        edit distance.
+
+    """
+    if isinstance(x_nodes, tuple):
+        x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
+
+    # the number of nodes in both trees
+    cdef int m = len(x_nodes)
+    cdef int n = len(y_nodes)
+
+    # if either tree is empty, we can only delete/insert all nodes in the
+    # non-empty tree.
+    cdef int i = 0
+    cdef int j = 0
+    ali = Alignment()
+    if m == 0:
+        for j in range(n):
+            ali.append_tuple(-1, j)
+        return ali
+    if n == 0:
+        for i in range(n):
+            ali.append_tuple(i, -1)
+        return ali
+
+    # Set up an array to store edit costs for replacements,
+    # deletions, and insertions
+    Delta = np.ones((m+1, n+1))
+    cdef double[:,:] Delta_view = Delta
+
+    if delta is None:
+        for i in range(m):
+            for j in range(n):
+                if x_nodes[i] == y_nodes[j]:
+                    Delta_view[i, j] = 0.
+    else:
+        # First, compute all pairwise replacement costs
+        for i in range(m):
+            for j in range(n):
+                Delta_view[i,j] = delta(x_nodes[i], y_nodes[j])
+        # Then, compute the deletion and insertion costs
+        for i in range(m):
+            Delta_view[i,n] = delta(x_nodes[i], None)
+        for j in range(n):
+            Delta_view[m,j] = delta(None, y_nodes[j])
+
+    # compute the actual tree edit distance
+    D_forest, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
+
+    # set up temporary variables for backtracing
+    cdef int k
+    cdef int l
+    cdef int i_k
+    cdef int j_l
+    cdef int m_i
+    cdef int n_j
+    cdef double rep_cost = 0.
+    cdef double del_cost = 0.
+    cdef int k_min = 0
+    cdef double ins_cost = 0.
+    cdef int l_min = 0
+
+    # start backtracing. We perform backtracing via a stack which
+    # stores a tuple of indices (i, j) in both trees and a 'mode'
+    # flag, namely whether we are currently align the subtrees at
+    # (i, j) or the child forests.
+    stk = [(0, 0, 0)]
+    while stk:
+        i, j, mode = stk.pop()
+        # print('pop (%d, %d, %d)' % (i, j, mode))
+        if mode == 0:
+            # first, check if we only wish to delete/insert
+            if i == -1:
+                # print('insert %d' % j)
+                ali.append_tuple(-1, j)
+                for j_l in y_adj[j][::-1]:
+                    stk.append((-1, j_l, 0))
+                continue
+            if j == -1:
+                # print('delete %d' % i)
+                ali.append_tuple(i, -1)
+                for i_k in x_adj[i][::-1]:
+                    stk.append((i_k, -1, 0))
+                continue
+            # print('continuing tree alignment at (%d, %d)' % (i, j))
+            m_i = len(x_adj[i])
+            n_j = len(y_adj[j])
+            # check whether replacement is co-optimal
+            # print('D_tree[i, j] = %g; Delta[i, j] = %g, D_forest[i, j] = %g' % (D_tree[i, j], Delta[i, j], D_forest[i, j]))
+            if D_tree[i, j] + _BACKTRACE_TOL > Delta[i, j] + D_forest[i, j]:
+                # print('replacement co-optimal')
+                # if so, i and j are aligned
+                ali.append_tuple(i, j)
+                # and we need to optimally align all children
+                stk.append((i, j, 1))
+                continue
+            # check whether deletion is co-optimal
+            if m_i == 0:
+                if D_tree[i, j] + _BACKTRACE_TOL > Delta[i, n] + D_tree[m, j]:
+                    # print('deletion co-optimal')
+                    # if it is and i has no children,
+                    # delete i and insert everything in j
+                    ali.append_tuple(i, -1)
+                    stk.append((-1, j, 0))
+                    continue
+            else:
+                # we consider all options to delete i and replace
+                # it with one of its children
+                for k in range(len(x_adj[i])):
+                    i_k = x_adj[i][k]
+                    del_cost = D_tree[i_k, j] + D_tree[i, n] - D_tree[i_k, n]
+                    if D_tree[i, j] + _BACKTRACE_TOL > del_cost:
+                        k_min = k
+                        break
+                if D_tree[i, j] + _BACKTRACE_TOL > del_cost:
+                    # print('deletion with child %d co-optimal' % k_min)
+                    # delete i
+                    ali.append_tuple(i, -1)
+                    for k in range(len(x_adj[i])-1, -1, -1):
+                        i_k = x_adj[i][k]
+                        if k == k_min:
+                            # continue the alignment between i_k and j
+                            stk.append((i_k, j, 0))
+                        else:
+                            # delete all children of i except i_k
+                            stk.append((i_k, -1, 0))
+                    continue
+            # check whether insertion is co-optimal
+            if n_j == 0:
+                if D_tree[i, j] + _BACKTRACE_TOL > Delta[m, j] + D_tree[i, n]:
+                    # print('insertion co-optimal')
+                    # if it is and j has no children,
+                    # insert j and delete everything in i
+                    ali.append_tuple(-1, j)
+                    stk.append((i, -1, 0))
+                    continue
+            else:
+                # we consider all options to insert j and replace
+                # it with one of its children
+                for l in range(len(y_adj[j])):
+                    j_l = y_adj[j][l]
+                    ins_cost = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
+                    if D_tree[i, j] + _BACKTRACE_TOL > ins_cost:
+                        l_min = l
+                        break
+                if D_tree[i, j] + _BACKTRACE_TOL > ins_cost:
+                    # print('insertion with child %d co-optimal' % l_min)
+                    # insert j
+                    ali.append_tuple(-1, j)
+                    for l in range(len(y_adj[j])-1, -1, -1):
+                        j_l = y_adj[j][l]
+                        if l == l_min:
+                            # continue the alignment between i and j_l
+                            stk.append((i, j_l, 0))
+                        else:
+                            # delete all children of j except j_l
+                            stk.append((-1, j_l, 0))
+                    continue
+        elif mode == 1:
+            # print('continuing forest alignment at (%d, %d)' % (i, j))
+            m_i = len(x_adj[i])
+            n_j = len(y_adj[j])
+            # if the children are empty, we need to delete all
+            # children of the counterpart
+            if m_i == 0:
+                for j_l in y_adj[j][::-1]:
+                    stk.append((-1, j_l, 0))
+                continue
+            if n_j == 0:
+                for i_k in x_adj[i][::-1]:
+                    stk.append((i_k, -1, 0))
+                continue
+            # next, check if replacement is co-optimal. For this
+            # purpose, perform the Munkres/Hungarian algorithm
+            # for an optimal alignment
+
+            # prepare a cost matrix for the algorithm
+            C = np.zeros((m_i + n_j, m_i + n_j))
+            for k in range(m_i):
+                i_k = x_adj[i][k]
+                for l in range(n_j):
+                    j_l = y_adj[j][l]
+                    # matching ci with cj means editing the ci'th
+                    # child of i to the cj'th child of j.
+                    C[k, l] = D_tree[i_k, j_l]
+            C[:m_i, n_j:] = INFINITY
+            for k in range(m_i):
+                # matching c with n_j + c means deleting the
+                # c'th child of i
+                i_k = x_adj[i][k]
+                C[k, n_j + k] = D_tree[i_k, n]
+            C[m_i:, :n_j] = INFINITY
+            for l in range(n_j):
+                # matching m_i + c with c means inserting the
+                # c'th child of j
+                j_l = y_adj[j][l]
+                C[m_i + l, l] = D_tree[m, j_l]
+            C[m_i:, n_j:] = 0.
+            # call the munkres algorithm
+            pi = munkres(C)
+            # compute the cost
+            rep_cost = 0.
+            for k in range(m_i):
+                i_k = x_adj[i][k]
+                if pi[k] >= n_j:
+                    # if pi[k] >= n_j, tree i_k should be deleted
+                    rep_cost += D_tree[i_k, n]
+                else:
+                    # otherwise we replace i_k with j_pi[k]
+                    j_l = y_adj[j][pi[k]]
+                    rep_cost += D_tree[i_k, j_l]
+            for l in range(n_j):
+                j_l = y_adj[j][l]
+                if pi[m_i + l] < n_j:
+                    # if pi[m_i + l] < n_j, tree j_l should be inserted
+                    rep_cost += D_tree[m, j_l]
+            # check if forest replacement is optimal
+            if D_forest[i, j] + _BACKTRACE_TOL > rep_cost:
+                # print('forest replacement with alignment %s co-optimal' % str(pi))
+                # if replacement is co-optimal, perform all
+                # deletion/insertion/replacements of subtrees
+                # dictated by the Hungarian result
+                for l in range(n_j-1, -1, -1):
+                    if pi[m_i + l] < n_j:
+                        # insert everything in subtree j_l
+                        stk.append((-1, y_adj[j][l], 0))
+                for k in range(m_i-1, -1, -1):
+                    if pi[k] < n_j:
+                        # put subtree replacements onto the stack
+                        stk.append((x_adj[i][k], y_adj[j][pi[k]], 0))
+                    else:
+                        # delete everything in subtree i_k
+                        stk.append((x_adj[i][k], -1, 0))
+                continue
+            # if it is not, check if forest deletion is optimal
+            for k in range(m_i):
+                i_k = x_adj[i][k]
+                # accordingly, we need to consider the cost of editing
+                # the children of node i_k with the children of j,
+                # plus the cost of deleting all other children of i.
+                del_cost = D_forest[i_k, j] + D_forest[i, n] - D_forest[i_k, n]
+                if D_forest[i, j] + _BACKTRACE_TOL > del_cost:
+                    k_min = k
+                    break
+            if D_forest[i, j] + _BACKTRACE_TOL > del_cost:
+                # print('forest deletion with child %d co-optimal' % k_min)
+                for k in range(m_i):
+                    i_k = x_adj[i][k]
+                    if k == k_min:
+                        # delete i_k
+                        ali.append_tuple(i_k, -1)
+                        # continue the forest alignment between
+                        # the children of i_k and j
+                        stk.append((i_k, j, 1))
+                    else:
+                        # delete all children of i except i_k
+                        stk.append((i_k, -1, 0))
+                continue
+            # if it is not, check if forest insertion is optimal
+            for l in range(n_j):
+                j_l = y_adj[j][l]
+                # accordingly, we need to consider the cost of editing
+                # tree i into tree j_l plus the cost o inserting all other
+                # children of j.
+                ins_cost = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
+                if D_forest[i, j] + _BACKTRACE_TOL > ins_cost:
+                    l_min = l
+                    break
+            if D_forest[i, j] + _BACKTRACE_TOL > ins_cost:
+                # print('forest insertion with child %d co-optimal' % l_min)
+                for l in range(n_j):
+                    j_l = y_adj[j][l]
+                    if l == l_min:
+                        # insert j_l
+                        ali.append_tuple(-1, j_l)
+                        # continue the forest alignment between
+                        # the children of i and j_l
+                        stk.append((i, j_l, 1))
+                    else:
+                        # insert all children of j except j_l
+                        stk.append((-1, j_l, 0))
+            continue
+        else:
+            raise ValueError('Internal error: Unrecognized mode: %s' % str(mode))
+        # if nothing is co-optimal, raise an exception
+        raise ValueError('Internal error: No option was co-optimal during alignment of (%d, %d), mode = %s' % (i, j, str(mode)))
+    return ali
