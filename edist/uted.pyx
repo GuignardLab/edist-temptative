@@ -120,7 +120,8 @@ def uted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
             Delta_view[m,j] = delta(None, y_nodes[j])
 
     # compute the actual tree edit distance
-    _, _, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
+    _, D_forest, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
+
     return D_tree[0,0]
 
 def _uted(x_nodes, x_adj, y_nodes, y_adj, Delta):
@@ -325,8 +326,10 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                     C[m_i:m_i+n_j, n_j:m_i+n_j] = 0.
                     # solve the linear sum assignment problem for C. The resulting
                     # minimum cost is our replacement cost
+                    # print('C before munkres for (%d, %d):\n%s' % (i, j, str(np.asarray(C))))
                     munkres_(C[:m_i+n_j,:m_i+n_j], Stars[:m_i+n_j,:m_i+n_j], Primes[:m_i+n_j,:m_i+n_j],
                     row_covers[:m_i+n_j], col_covers[:m_i+n_j], path[:m_i+n_j, :], pi[:m_i+n_j])
+                    # print('pi after munkres: %s' % str(np.asarray(pi)))
                     # reconstruct the cost of the assignment from pi
                     rep_cost = 0.
                     for k in range(m_i):
@@ -334,14 +337,19 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                         if pi[k] >= n_j:
                             # if pi[k] >= n_j, tree i_k should be deleted
                             rep_cost += D_tree[i_k, n]
+                            # print('delete %d for %g' % (i_k, D_tree[i_k, n]))
                         else:
                             # otherwise we replace i_k with j_pi[k]
                             j_l = A_y[j, pi[k]]
                             rep_cost += D_tree[i_k, j_l]
+                            # print('replace %d with %d for %g' % (i_k, j_l, D_tree[i_k, j_l]))
                     for l in range(n_j):
+                        j_l = A_y[j, l]
                         if pi[m_i + l] < n_j:
                             # if pi[m_i + l] < n_j, tree j_l should be inserted
                             rep_cost += D_tree[m, j_l]
+                            # print('insert %d for %g' % (j_l, D_tree[m, j_l]))
+                    # print('cost of pi: %g' % rep_cost)
                 # compute minimum across deletion, insertion, and replacement
                 D_forest[i, j] = min3(del_cost, ins_cost, rep_cost)
 
@@ -436,8 +444,6 @@ cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
     cdef int T
     cdef int found_zero
 
-    cdef int debug_count = 0
-
     # initialization: we subtract the row and column minimum
     for i in range(m):
         h = INFINITY
@@ -491,9 +497,6 @@ cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
             return
         # Step 3: Prime non-covered zeros and change coverings
         while True:
-            debug_count += 1
-            if debug_count > 10:
-                raise ValueError('stop')
             # find an uncovered zero
             found_zero = 0
             # print('row covers in step 3: %s' % str(np.asarray(row_covers)))
@@ -590,6 +593,8 @@ cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
         # star all locations on the path
         for t in range(T):
             Stars[path[t, 0], path[t, 1]] = 1
+        # remove all primes
+        Primes[:, :] = 0
         # update all column covers
         col_covers[:] = 0
         for j in range(m):

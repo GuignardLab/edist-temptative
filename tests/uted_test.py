@@ -126,5 +126,17 @@ class TestUTED(unittest.TestCase):
         pi = uted.munkres(C)
         self.assertTrue(np.all(np.abs(x - y[pi]) < 1.))
 
+        # test another matrix which lead to a bug before
+        C = np.array(
+            [[ 1.,  2.,  1., np.inf, np.inf],
+             [ 0.,  2., np.inf,  2., np.inf],
+             [ 0.,  2., np.inf, np.inf,  2.],
+             [ 2., np.inf,  0.,  0.,  0.],
+             [np.inf,  3.,  0.,  0.,  0.]])
+
+        pi = uted.munkres(C)
+        np.testing.assert_array_equal([2, 1, 0, 4, 3], pi)
+
+
 if __name__ == '__main__':
     unittest.main()
