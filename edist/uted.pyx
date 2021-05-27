@@ -27,6 +27,7 @@ from edist.ted import extract_from_tuple_input
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 cimport cython
+from numpy.math cimport INFINITY
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
@@ -62,7 +63,7 @@ def uted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
         a function that takes two nodes as inputs and returns their pairwise
         distance, where delta(x, None) should be the cost of deleting x and
         delta(None, y) should be the cost of inserting y. If undefined, this
-        method calls standard_ted instead.
+        method uses unit costs.
 
     Returns
     -------
@@ -70,66 +71,84 @@ def uted(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
         the tree edit distance between x and y according to delta.
 
     """
-#    if delta is None:
-#        return float(standard_ted(x_nodes, x_adj, y_nodes, y_adj))
-
     if isinstance(x_nodes, tuple):
         x_nodes, x_adj, y_nodes, y_adj = extract_from_tuple_input(x_nodes, x_adj)
+
     # the number of nodes in both trees
     cdef int m = len(x_nodes)
     cdef int n = len(y_nodes)
+
     # if either tree is empty, we can only delete/insert all nodes in the
     # non-empty tree.
     cdef double d = 0
+    cdef int i
+    cdef int j
     if m == 0:
-        for j in range(n):
-            d += delta(None, y_nodes[j])
-        return d
+        if delta is None:
+            return n
+        else:
+            for j in range(n):
+                d += delta(None, y_nodes[j])
+            return d
     if n == 0:
+        if delta is None:
+            return m
+        else:
+            for i in range(m):
+                d += delta(x_nodes[i], None)
+            return d
+
+    # Set up an array to store edit dists for replacements,
+    # deletions, and insertions
+    Delta = np.ones((m+1, n+1))
+    cdef double[:,:] Delta_view = Delta
+
+    if delta is None:
         for i in range(m):
-            d += delta(x_nodes[i], None)
-        return d
-    # otherwise, compute the actual tree edit distance
-    _, _, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, delta)
+            for j in range(n):
+                if x_nodes[i] == y_nodes[j]:
+                    Delta_view[i, j] = 0.
+    else:
+        # First, compute all pairwise replacement costs
+        for i in range(m):
+            for j in range(n):
+                Delta_view[i,j] = delta(x_nodes[i], y_nodes[j])
+        # Then, compute the deletion and insertion costs
+        for i in range(m):
+            Delta_view[i,n] = delta(x_nodes[i], None)
+        for j in range(n):
+            Delta_view[m,j] = delta(None, y_nodes[j])
+
+    # compute the actual tree edit distance
+    _, _, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
     return D_tree[0,0]
 
-def _uted(x_nodes, x_adj, y_nodes, y_adj, delta = None):
+def _uted(x_nodes, x_adj, y_nodes, y_adj, Delta):
     """ Internal function; call uted instead. """
     # the number of nodes in both trees
     cdef int m = len(x_nodes)
     cdef int n = len(y_nodes)
-    # An array to store all edit costs for replacements, deletions, and
-    # insertions
-    Delta = np.zeros((m+1, n+1))
-    cdef double[:,:] Delta_view = Delta
-    # First, compute all pairwise replacement costs
-    cdef int i
-    cdef int j
-    for i in range(m):
-        for j in range(n):
-            Delta_view[i,j] = delta(x_nodes[i], y_nodes[j])
-
-    # Then, compute the deletion and insertion costs
-    for i in range(m):
-        Delta_view[i,n] = delta(x_nodes[i], None)
-    for j in range(n):
-        Delta_view[m,j] = delta(None, y_nodes[j])
 
     # convert adjacency lists to array form
     A_x, deg_x = adjmat_(x_adj)
     A_y, deg_y = adjmat_(y_adj)
 
-    del_options = np.zeros(A_x.shape[1])
-    ins_options = np.zeros(A_y.shape[1])
-
-    C = np.zeros((A_x.shape[1] + A_y.shape[1], A_x.shape[1] + A_y.shape[1]))
+    # set up temporary matrices for the munkres algorithm
+    cdef int max_deg = A_x.shape[1] + A_y.shape[1]
+    C = np.zeros((max_deg, max_deg))
+    Stars  = np.zeros((max_deg, max_deg), dtype=np.intc)
+    Primes = np.zeros((max_deg, max_deg), dtype=np.intc)
+    row_covers = np.zeros(max_deg, dtype=np.intc)
+    col_covers = np.zeros(max_deg, dtype=np.intc)
+    path = np.zeros((max_deg, 2), dtype=int)
+    pi = np.zeros(max_deg, dtype=int)
 
     # initialize dynamic programming matrices for forest and tree edit distance
     D_forest = np.zeros((m+1,n+1))
     D_tree = np.zeros((m+1,n+1))
     
     # call the c routine
-    _uted_c(A_x, deg_x, A_y, deg_y, Delta, D_forest, D_tree, del_options, ins_options, C)
+    uted_c_(A_x, deg_x, A_y, deg_y, Delta, D_forest, D_tree, C, Stars, Primes, row_covers, col_covers, path, pi)
 
     return Delta, D_forest, D_tree
 
@@ -153,9 +172,12 @@ def adjmat_(adj):
 
     return Adj, degs
 
-def _uted_c(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const long[:] deg_y, 
+
+@cython.boundscheck(False)
+cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const long[:] deg_y, 
     const double[:,:] Delta, double[:,:] D_forest, double[:,:] D_tree,
-    double[:] del_options, double[:] ins_options, double[:, :] C):
+    double[:, :] C, int[:, :] Stars, int[:, :] Primes,
+    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) nogil:
     """ This method is internal and performs the actual tree edit distance
     computation for trees x and y in pure C.
 
@@ -169,21 +191,23 @@ def _uted_c(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const
     cdef int n = A_y.shape[0]
 
     # for the nodes in x and y
-    cdef long i
-    cdef long j
+    cdef int i
+    cdef int j
     # for the children of x[i] and y[j]
-    cdef long k
-    cdef long l
+    cdef int k
+    cdef int l
     # for the number of children of i and j
-    cdef long m_i
-    cdef long n_j
+    cdef int m_i
+    cdef int n_j
     # and for the child indices
-    cdef long i_k
-    cdef long j_l
+    cdef int i_k = 0
+    cdef int j_l = 0
     # and for the deletion, insertion, and replacement cost
     cdef double del_cost
     cdef double ins_cost
     cdef double rep_cost
+
+    cdef double tmp_cost
 
     for i in range(m-1, -1, -1):
         # Compute the subforest deletion cost for i, i.e. the cost
@@ -225,53 +249,99 @@ def _uted_c(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const
                 # For that, we have three options.
                 # First, we could delete all children of i except for a single
                 # subtree
+                del_cost = INFINITY
                 for k in range(m_i):
                     i_k = A_x[i, k]
                     # accordingly, we need to consider the cost of editing
                     # the children of node i_c with the children of j,
                     # plus the cost of deleting all other children of i.
-                    del_options[k] = D_forest[i_k, j] + D_forest[i, n] - D_forest[i_k, n]
-                del_cost = np.min(del_options[:m_i])
+                    tmp_cost = D_forest[i_k, j] + D_forest[i, n] - D_forest[i_k, n]
+                    if tmp_cost < del_cost:
+                        del_cost = tmp_cost
                 # Second, we could insert all children of j except for a single
                 # subtree
+                ins_cost = INFINITY
                 for l in range(n_j):
                     j_l = A_y[j, l]
                     # accordingly, we need to consider the cost of editing
                     # the children of node i to the children of j_c,
                     # plus the cost of inserting all other children of j.
-                    ins_options[l] = D_forest[i, j_l] + D_forest[m, j] - D_forest[m, j_l]
-                ins_cost = np.min(ins_options[:n_j])
+                    tmp_cost = D_forest[i, j_l] + D_forest[m, j] - D_forest[m, j_l]
+                    if tmp_cost < ins_cost:
+                        ins_cost = tmp_cost
                 # Third, we could replace, meaning that we optimally match all
-                # children of i to all children of j. We use the Hungarian
-                # algorithm for this purpose.
-                # prepare a cost matrix for the Hungarian algorithm
-                for k in range(m_i):
-                    i_k = A_x[i, k]
+                # children of i to all children of j.
+
+                # if there is only one child in one of the forests, we can
+                # solve this with a simplified algorithm
+                if m_i == 1:
+                    # we obtain the total cost by computing the
+                    # cost of inserting all children of j,
+                    # minus the cost of inserting one child,
+                    # but replacing it with i_k
+                    rep_cost = INFINITY
+                    i_k = A_x[i, 0]
                     for l in range(n_j):
                         j_l = A_y[j, l]
-                        # matching ci with cj means editing the ci'th
-                        # child of i to the cj'th child of j.
-                        C[k, l] = D_tree[i_k, j_l]
-                C[:m_i, n_j:m_i+n_j] = np.inf
-                for k in range(m_i):
-                    # matching c with n_j + c means deleting the
-                    # c'th child of i
-                    i_k = A_x[i, k]
-                    C[k, n_j + k] = D_tree[i_k, n]
-                C[m_i:m_i+n_j, :n_j] = np.inf
-                for l in range(n_j):
-                    # matching m_i + c with c means inserting the
-                    # c'th child of j
-                    j_l = A_y[j, l]
-                    C[m_i + l, l] = D_tree[m, j_l]
-                C[m_i:m_i+n_j, n_j:m_i+n_j] = 0.
-                # solve the linear sum assignment problem for C. The resulting
-                # minimum cost is our replacement cost
-                I, J = linear_sum_assignment(C[:m_i+n_j,:m_i+n_j])
-                rep_cost = 0
-                for k in range(m_i + n_j):
-                    l = J[k]
-                    rep_cost += C[k, l]
+                        tmp_cost = D_tree[i_k, j_l] + D_forest[m, j] - D_tree[m, j_l]
+                        if tmp_cost < rep_cost:
+                            rep_cost = tmp_cost
+                elif n_j == 1:
+                    # we obtain the total cost by computing the
+                    # cost of deleting all children of i,
+                    # minus the cost of deleting one child,
+                    # but replacing it with j_k
+                    rep_cost = INFINITY
+                    j_l = A_y[j, 0]
+                    for k in range(m_i):
+                        i_k = A_x[i, k]
+                        tmp_cost = D_tree[i_k, j_l] + D_forest[i, n] - D_tree[i_k, n]
+                        if tmp_cost < rep_cost:
+                            rep_cost = tmp_cost
+                else:
+                    # if there is more than one child on both sides, we use
+                    # the Munkres/Hungarian algorithm.
+
+                    # prepare a cost matrix for the Hungarian algorithm
+                    for k in range(m_i):
+                        i_k = A_x[i, k]
+                        for l in range(n_j):
+                            j_l = A_y[j, l]
+                            # matching ci with cj means editing the ci'th
+                            # child of i to the cj'th child of j.
+                            C[k, l] = D_tree[i_k, j_l]
+                    C[:m_i, n_j:m_i+n_j] = INFINITY
+                    for k in range(m_i):
+                        # matching c with n_j + c means deleting the
+                        # c'th child of i
+                        i_k = A_x[i, k]
+                        C[k, n_j + k] = D_tree[i_k, n]
+                    C[m_i:m_i+n_j, :n_j] = INFINITY
+                    for l in range(n_j):
+                        # matching m_i + c with c means inserting the
+                        # c'th child of j
+                        j_l = A_y[j, l]
+                        C[m_i + l, l] = D_tree[m, j_l]
+                    C[m_i:m_i+n_j, n_j:m_i+n_j] = 0.
+                    # solve the linear sum assignment problem for C. The resulting
+                    # minimum cost is our replacement cost
+                    munkres_(C[:m_i+n_j,:m_i+n_j], Stars[:m_i+n_j,:m_i+n_j], Primes[:m_i+n_j,:m_i+n_j],
+                    row_covers[:m_i+n_j], col_covers[:m_i+n_j], path[:m_i+n_j, :], pi[:m_i+n_j])
+                    # reconstruct the cost of the assignment from pi
+                    rep_cost = 0.
+                    for k in range(m_i):
+                        i_k = A_x[i, k]
+                        if pi[k] >= n_j:
+                            # if pi[k] >= n_j, tree i_k should be deleted
+                            rep_cost += D_tree[i_k, n]
+                        else:
+                            # otherwise we replace i_k with j_pi[k]
+                            j_l = A_y[j, pi[k]]
+                            rep_cost += D_tree[i_k, j_l]
+                    for l in range(n_j):
+                        if pi[m_i + l] < n_j:
+                            # if pi[m_i + l] < n_j, tree j_l should be inserted
+                            rep_cost += D_tree[m, j_l]
                 # compute minimum across deletion, insertion, and replacement
                 D_forest[i, j] = min3(del_cost, ins_cost, rep_cost)
 
@@ -283,27 +353,29 @@ def _uted_c(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const
             if m_i == 0:
                 del_cost = D_tree[m, j]
             else:
-                del_options = np.zeros(m_i)
+                del_cost = INFINITY
                 for k in range(m_i):
                     i_k = A_x[i, k]
                     # accordingly, we need to consider the cost of editing
                     # tree i_c into tree j plus the cost of deleting all other
                     # children of i.
-                    del_options[k] = D_tree[i_k, j] + D_tree[i, n] - D_tree[i_k, n]
-                del_cost = np.min(del_options[:m_i])
+                    tmp_cost = D_tree[i_k, j] + D_tree[i, n] - D_tree[i_k, n]
+                    if tmp_cost < del_cost:
+                        del_cost = tmp_cost
             # Second, we could insert node j and all children of j except
             # for a single one.
             if n_j == 0:
                 ins_cost = D_tree[i, n]
             else:
-                ins_options = np.zeros(n_j)
+                ins_cost = INFINITY
                 for l in range(n_j):
                     j_l = A_y[j, l]
                     # accordingly, we need to consider the cost of editing
                     # tree i into tree j_c plus the cost o inserting all other
                     # children of j.
-                    ins_options[l] = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
-                ins_cost = np.min(ins_options[:n_j])
+                    tmp_cost = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
+                    if tmp_cost < ins_cost:
+                        ins_cost = tmp_cost
             # Third, we could replace, meaning that we edit node i into
             # node j and all children of i into all children of j
             rep_cost = Delta[i, j] + D_forest[i, j]
@@ -339,39 +411,6 @@ cdef double min3(double a, double b, double c) nogil:
         else:
             return c
 
-
-def munkres(C):
-    """ This calls the Munkres algorithm to find a minimal
-    matching for the given cost matrix C. Note that this function
-    is more for debugging purposes. If you want to call this
-    algorithm from Python, you are better served by calling
-    scipy.optimize.linear_sum_assignment.
-
-    Parameters
-    ----------
-    C: ndarray
-        An m x m cost matrix.
-
-    Returns
-    -------
-    pi: ndarray
-        An m-element array where pi[i] is the index to which i is
-        assigned.
-
-    """
-    # set up all temporary variables
-    C = np.copy(C)
-    m = C.shape[0]
-    Stars  = np.zeros((m, m), dtype=np.intc)
-    Primes = np.zeros((m, m), dtype=np.intc)
-    row_covers = np.zeros(m, dtype=np.intc)
-    col_covers = np.zeros(m, dtype=np.intc)
-    path = np.zeros((m, 2), dtype=int)
-    pi = np.zeros(m, dtype=int)
-    munkres_(C, Stars, Primes, row_covers, col_covers, path, pi)
-    return pi
-
-from numpy.math cimport INFINITY
 
 @cython.boundscheck(False)
 cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
@@ -561,3 +600,36 @@ cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
         # step 4 complete, return to step 2
         # print('new stars after step 4\n%s' % str(np.asarray(Stars)))
         # print('new col covers after step 4: %s' % str(np.asarray(col_covers)))
+
+
+
+def munkres(C):
+    """ This calls the Munkres algorithm to find a minimal
+    matching for the given cost matrix C. Note that this function
+    is more for debugging purposes. If you want to call this
+    algorithm from Python, you are better served by calling
+    scipy.optimize.linear_sum_assignment.
+
+    Parameters
+    ----------
+    C: ndarray
+        An m x m cost matrix.
+
+    Returns
+    -------
+    pi: ndarray
+        An m-element array where pi[i] is the index to which i is
+        assigned.
+
+    """
+    # set up all temporary variables
+    C = np.copy(C)
+    m = C.shape[0]
+    Stars  = np.zeros((m, m), dtype=np.intc)
+    Primes = np.zeros((m, m), dtype=np.intc)
+    row_covers = np.zeros(m, dtype=np.intc)
+    col_covers = np.zeros(m, dtype=np.intc)
+    path = np.zeros((m, 2), dtype=int)
+    pi = np.zeros(m, dtype=int)
+    munkres_(C, Stars, Primes, row_covers, col_covers, path, pi)
+    return pi
