@@ -196,6 +196,15 @@ library.
   * `edist.ted.ted_backtrace_matrix(x_nodes, x_adj, y_nodes, delta)` for the
     same, but returning a probability distribution over all pairings between
     elements of `x` and `y`.
+* The unordered tree edit distance (UTED; [Zhang, 1996][Zha1996]):
+    * `edist.uted.uted(x_nodes, x_adj, y_nodes, y_adj, delta)` for edit
+    distance computation between the trees `x` and `y`, which are both given
+    in a node list/adjacency list format. Both lists are supposed to be in
+    depth-first-search order, e.g. a tree a(b, c) is supposed to be represented
+    as the two lists `['a', 'b', 'c']` and `[[1, 2], [], []]`.
+    * `edist.uted.uted_backtrace(x_nodes, x_adj, y_nodes, y_adj, delta)` for
+    backtracing of the unordered tree edit distance with an (optional) custom
+    element distance function `delta`.
 * The set edit distance (SetED; unpublished, but using the Hungarian algorithm
     of [Kuhn, 1955][Kuh1955] at its core):
   * `edist.seted.standard_seted(x, y)` for set edit distance computation
@@ -311,9 +320,11 @@ an implementation of the Hungarian algorithm ([Kuhn, 1955][Kuh1955]).
     programming over sequence data. Science of Computer Programming, 51(3),
     215-263. doi:[10.1016/j.scico.2003.12.005][Gie2004]
 * Gotoh, O. (1982). An improved algorithm for matching biological sequences.
-    Journal of Molecular Biology, 162(3), 705-708. doi:[10.1016/0022-2836(82)90398-9][Got1982]
+    Journal of Molecular Biology, 162(3), 705-708.
+    doi:[10.1016/0022-2836(82)90398-9][Got1982]
 * Kuhn, H. (1955). The Hungarian method for the assignment problem.
-    Naval Research Logistics Quarterly, 2(1-2), 83-97. doi:[10.1002/nav.3800020109][Kuh1955]
+    Naval Research Logistics Quarterly, 2(1-2), 83-97.
+    doi:[10.1002/nav.3800020109][Kuh1955]
 * Levenshtein, V. (1965). Binary codes capable of correcting deletions,
     insertions, and reversals. Soviet Physics Doklady, 10(8), 707-710.
 * Paaßen, B., Mokbel, B., & Hammer, B. (2015). A Toolbox for Adaptive Sequence
@@ -323,8 +334,9 @@ an implementation of the Hungarian algorithm ([Kuhn, 1955][Kuh1955]).
     on Educational Data Mining (pp. 632-632). International Educational
     Datamining Society. [Link][Paa2015]
 * Paaßen, B., Mokbel, B., & Hammer, B. (2016). Adaptive structure metrics for
-    automated feedback provision in intelligent tutoring systems. Neurocomputing,
-    192, 3-13. doi:[10.1016/j.neucom.2015.12.108](https://doi.org/10.1016/j.neucom.2015.12.108).
+    automated feedback provision in intelligent tutoring systems.
+    Neurocomputing, 192, 3-13.
+    doi:[10.1016/j.neucom.2015.12.108](https://doi.org/10.1016/j.neucom.2015.12.108).
     [Link][Paa2016]
 * Paaßen, B., Gallicchio, C., Micheli, A., & Hammer, B. (2018). Tree Edit
     Distance Learning via Adaptive Symbol Embeddings. Proceedings of the 35th
@@ -339,6 +351,8 @@ an implementation of the Hungarian algorithm ([Kuhn, 1955][Kuh1955]).
 * Zhang, K., & Shasha, D. (1989). Simple Fast Algorithms for the Editing
     Distance between Trees and Related Problems. SIAM Journal on Computing,
     18(6), 1245-1262. doi:[10.1137/0218082][Zha1989]
+* Zhang, K. (1996). A Constrained Edit Distance Between Unordered Labeled
+    Trees. Algorithmica, 15, 205-222. doi:[10.1007/BF01975866][Zha1996]
 
 <!-- References -->
 
@@ -353,6 +367,7 @@ an implementation of the Hungarian algorithm ([Kuhn, 1955][Kuh1955]).
 [Got1982]:https://doi.org/10.1016/0022-2836(82)90398-9 "Gotoh, O. (1982). An improved algorithm for matching biological sequences. Journal of Molecular Biology, 162(3), 705-708. doi:10.1016/0022-2836(82)90398-9"
 [Gie2004]:https://doi.org/10.1016/j.scico.2003.12.005 "Giegerich, R., Meyer, C., & Steffen, P. (2004). A discipline of dynamic programming over sequence data. Science of Computer Programming, 51(3), 215-263. doi:10.1016/j.scico.2003.12.005"
 [Zha1989]:https://doi.org/10.1137/0218082 "Zhang, K., & Shasha, D. (1989). Simple Fast Algorithms for the Editing Distance between Trees and Related Problems. SIAM Journal on Computing, 18(6), 1245-1262. doi:10.1137/0218082"
+[Zha1996]:https://doi.org/10.1007/BF01975866 "Zhang, K. (1996). A Constrained Edit Distance Between Unordered Labeled Trees. Algorithmica, 15, 205-222. doi:10.1007/BF01975866"
 [Kuh1955]:https://doi.org/10.1002/nav.3800020109 "Kuhn, H. (1955). The Hungarian method for the assignment problem. Naval Research Logistics Quarterly, 2(1-2), 83-97. doi:10.1002/nav.3800020109"
 [tcs]:https://openresearch.cit-ec.de/projects/tcs "TCS Alignment Toolbox homepage"
 [pypi]:https://pypi.org/project/edist/ "PyPi edist project page"
