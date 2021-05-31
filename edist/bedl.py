@@ -7,7 +7,7 @@ the 35th International Conference on Machine Learning (ICML 2018).
 URL: http://proceedings.mlr.press/v80/paassen18a.html
 
 """
-# Copyright (C) 2019-2020
+# Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
 # Bielefeld University
@@ -34,9 +34,9 @@ import edist.sed as sed
 import edist.multiprocess as mp
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
+__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 

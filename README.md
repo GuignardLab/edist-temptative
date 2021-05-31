@@ -1,6 +1,6 @@
 # Python Edit Distances
 
-Copyright (C) 2019-2020 - Benjamin Paassen  
+Copyright (C) 2019-2021 - Benjamin Paassen  
 Machine Learning Research Group  
 Center of Excellence Cognitive Interaction Technology (CITEC)  
 Bielefeld University

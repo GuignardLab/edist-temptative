@@ -3,7 +3,7 @@
 Tests the unordered tree edit distance implementation.
 
 """
-# Copyright (C) 2021
+# Copyright (C) 2019-2021
 # Benjamin Paaßen
 # Humboldt-University of Berlin
 
@@ -26,9 +26,9 @@ import numpy as np
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2021, Benjamin Paaßen'
+__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'benjamin.paassen@hu-berlin.de'
 

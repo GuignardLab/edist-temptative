@@ -5,7 +5,7 @@ Implements the dynamic time warping distance of Vintsyuk (1968) and its
 backtracing in cython.
 
 """
-# Copyright (C) 2019-2020
+# Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
 # Bielefeld University
@@ -32,9 +32,9 @@ cimport cython
 from edist.alignment import Alignment
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
+__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 

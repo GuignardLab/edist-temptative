@@ -3,7 +3,7 @@ Implements list edits, i.e. functions which take a list as input and
 return a changed list.
 
 """
-# Copyright (C) 2019-2020
+# Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
 # Bielefeld University
@@ -25,9 +25,9 @@ import abc
 import copy
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
+__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 

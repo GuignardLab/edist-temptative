@@ -3,7 +3,7 @@
 Tests parallel computations of tree edit distances.
 
 """
-# Copyright (C) 2019-2020
+# Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
 # Bielefeld University
@@ -32,9 +32,9 @@ from edist.sed import standard_sed_backtrace
 import edist.multiprocess as multiprocess
 
 __author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright 2019-2020, Benjamin Paaßen'
+__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
