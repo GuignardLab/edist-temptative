@@ -61,6 +61,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     keywords='levenshtein-distance dynamic-time-warping sequence-edit-distance sequence-alignment tree-edit-distance algebraic-dynamic-programming',
-    ext_modules=extensions,
-    include_dirs=[numpy.get_include()]
+    ext_modules=extensions
 )

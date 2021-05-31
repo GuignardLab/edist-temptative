@@ -26,9 +26,8 @@ backtracing in cython.
 from edist.ted import extract_from_tuple_input
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-cimport cython
-from numpy.math cimport INFINITY
 from edist.alignment import Alignment
+cimport cython
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
@@ -36,6 +35,10 @@ __license__ = 'GPLv3'
 __version__ = '0.1.0'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
+
+
+cdef extern from "math.h":
+    float INFINITY
 
 ###################################
 # Edit Distance with Custom Delta #
