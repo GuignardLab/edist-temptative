@@ -17,6 +17,7 @@ In more detail, this library currently features the following algorithms.
 * Dynamic Time Warping (sed; Vintsyuk, 1968)
 * Affine edit distance (aed; Gotoh, 1982)
 * Tree Edit Distance (ted; Zhang and Shasha, 1989)
+* Constrained Unordered Tree Edit Distance (uted; Zhang and Shasha, 1996)
 * Set edit distance (seted; unpublished)
 
 As well as the following meta-algorithms:
@@ -49,6 +50,7 @@ Please consult the `project website <https://gitlab.ub.uni-bielefeld.de/bpaassen
    sed
    seted
    ted
+   uted
    tree_edits
    tree_utils
 

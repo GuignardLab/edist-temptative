@@ -18,13 +18,13 @@
 # -- Project information -----------------------------------------------------
 
 project = 'edist'
-copyright = '2019-2020, Benjamin Paassen'
+copyright = '2019-2021, Benjamin Paassen'
 author = 'Benjamin Paassen'
 
 master_doc = 'index'
 
 # The full version, including alpha/beta/rc tags
-release = '1.1.0'
+release = '1.2.0'
 
 
 # -- General configuration ---------------------------------------------------
