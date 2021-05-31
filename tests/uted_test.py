@@ -21,7 +21,7 @@ Tests the unordered tree edit distance implementation.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-import uted
+import edist.uted as uted
 import numpy as np
 from edist.alignment import Alignment
 
