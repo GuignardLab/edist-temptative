@@ -41,6 +41,22 @@ If you use this library in academic work, please cite:
     on Educational Data Mining (pp. 632-632). International Educational
     Datamining Society. ([Link][Paa2015])
 
+```
+@inproceedings{Paassen2015EDM,
+author = {Paaßen, Benjamin and Mokbel, Bassam and Hammer, Barbara},
+booktitle = {Proceedings of the 8th {Interna``ional Conference on Educational Data Mining} ({EDM 2015})},
+date = {2015-06},
+editor = {Olga Christina Santos and Jesus Gonzalez Boticario and Cristobal Romero and Mykola Pechenizkiy and Agathe Merceron and Piotr Mitros and Jose Maria Luna and Christian Mihaescu and Pablo Moreno and Arnon Hershkovitz and Sebastian Ventura and Michel Desmarais},
+language = {English},
+pages = {632–632},
+publisher = {International Educational Datamining Society},
+title = {A Toolbox for Adaptive Sequence Dissimilarity Measures for Intelligent Tutoring Systems},
+url = {http://www.educationaldatamining.org/EDM2015/uploads/papers/paper_257.pdf},
+venue = {Madrid, Spain},
+year = {2015}
+}
+```
+
 This library is historically based on its Java version, the
 [TCS Alignment Toolbox][tcs].
 
