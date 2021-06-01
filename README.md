@@ -44,7 +44,7 @@ If you use this library in academic work, please cite:
 ```
 @inproceedings{Paassen2015EDM,
 author = {Paaßen, Benjamin and Mokbel, Bassam and Hammer, Barbara},
-booktitle = {Proceedings of the 8th {Interna``ional Conference on Educational Data Mining} ({EDM 2015})},
+booktitle = {Proceedings of the 8th {International Conference on Educational Data Mining} ({EDM 2015})},
 date = {2015-06},
 editor = {Olga Christina Santos and Jesus Gonzalez Boticario and Cristobal Romero and Mykola Pechenizkiy and Agathe Merceron and Piotr Mitros and Jose Maria Luna and Christian Mihaescu and Pablo Moreno and Arnon Hershkovitz and Sebastian Ventura and Michel Desmarais},
 language = {English},
