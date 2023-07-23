@@ -52,11 +52,11 @@ def _batch_dist_with_indices_and_delta(k, l, dist, X, Y, delta, symmetric = Fals
     if(not symmetric):
         for k2 in range(len(X)):
             for l2 in range(len(Y)):
-                D[k2, l2] = dist(X[k2], Y[l2], delta)
+                D[k2, l2] = dist(X[k2], Y[l2], delta = delta)
     else:
         for k2 in range(len(X)):
             for l2 in range(k2+1, len(Y)):
-                D[k2, l2] = dist(X[k2], Y[l2], delta)
+                D[k2, l2] = dist(X[k2], Y[l2], delta = delta)
     return (k, l, D)
 
 def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
