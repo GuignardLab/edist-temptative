@@ -24,6 +24,7 @@ import unittest
 import edist.uted as uted
 import numpy as np
 from edist.alignment import Alignment
+from edist import tree_utils
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
@@ -120,6 +121,30 @@ class TestUTED(unittest.TestCase):
         expected_alignment.append_tuple(4, 2)
         expected_alignment.append_tuple(-1, 4)
         self.assertEqual(expected_alignment, alignment)
+
+    def test_uted_backtrace_big(self):
+      # Test case devised by Marcel Wittmund (RWTH). 
+      x_nodes = [14, 13, 15, 20, 21, 94, 83, 74, 70, 84, 28, 29, 37, 23]
+      x_adj   = [[1, 2, 3, 13], [], [], [4, 10], [5], [6], [7, 9], [8], [], [], [11, 12], [], [], []]
+      y_nodes = [29, 28, 30, 31, 39, 40, 16, 52, 53, 55, 53, 66, 67, 68, 73, 35, 36, 112, 103, 92, 84, 93, 147, 159, 104, 50, 51, 58, 38]
+      y_adj   = [[1, 2, 15, 28], [], [3, 4, 5, 6, 7, 8, 9], [], [], [], [], [], [], [10, 11, 12, 13, 14], [], [], [], [], [], [16, 25], [17], [18], [19, 24], [20, 21], [], [22, 23], [], [], [], [26, 27], [], [], []]
+
+      self.assertEqual(len(x_nodes), len(x_adj))
+      self.assertEqual(len(y_nodes), len(y_adj))
+
+      tree_utils.check_dfs_structure(x_adj)
+      tree_utils.check_dfs_structure(y_adj)
+
+      def delta3(x, y):
+          if x == y:
+              return 0.
+          else:
+              return 1.
+
+      alignment = uted.uted_backtrace(x_nodes, x_adj, y_nodes, y_adj)
+      print(alignment.cost(x_nodes, y_nodes, delta3))
+      print(uted.uted(x_nodes, x_adj, y_nodes, y_adj, delta3))
+
 
     def test_munkres(self):
         C = np.array([[7., 5., 11.2], [5., 4., 1.], [9.3, 3., 2.]])
