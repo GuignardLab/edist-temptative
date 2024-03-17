@@ -46,7 +46,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="edist",
-    version="1.2.1",
+    version="1.2.2",
     author="Benjamin Paassen",
     author_email="bpaassen@techfak.uni-bielefeld.de",
     description="Edit distance implementations in cython",

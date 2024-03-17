@@ -27,7 +27,7 @@ import numpy as np
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright (C) 2019-2023, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 

@@ -32,7 +32,7 @@ cimport cython
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '0.1.0'
+__version__ = '1.2.2'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
@@ -328,6 +328,8 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                         j_l = A_y[j, l]
                         C[m_i + l, l] = D_tree[m, j_l]
                     C[m_i:m_i+n_j, n_j:m_i+n_j] = 0.
+                    # print('i = %d, j = %d' % (i, j))
+                    # print('C = %s' % str(np.asarray(C[:m_i+n_j,:m_i+n_j])))
                     # solve the linear sum assignment problem for C. The resulting
                     # minimum cost is our replacement cost
                     # print('C before munkres for (%d, %d):\n%s' % (i, j, str(np.asarray(C))))
@@ -355,6 +357,7 @@ cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y,
                             # print('insert %d for %g' % (j_l, D_tree[m, j_l]))
                     # print('cost of pi: %g' % rep_cost)
                 # compute minimum across deletion, insertion, and replacement
+                # print('del_cost = %g, ins_cost = %g, rep_cost = %g' % (del_cost, ins_cost, rep_cost))
                 D_forest[i, j] = min3(del_cost, ins_cost, rep_cost)
 
             # next, compute the unordered tree edit distance between the
@@ -734,6 +737,27 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     # compute the actual tree edit distance
     D_forest, D_tree = _uted(x_nodes, x_adj, y_nodes, y_adj, Delta)
 
+
+    # x_nodes_print = [str(x) for x in x_nodes] + ['-']
+    # y_nodes_print = [str(y) for y in y_nodes] + ['-']
+    # print('Delta:')
+    # print('i\\j\t\t' + '\t'.join(['%d' % j for j in range(n+1)]))
+    # print('\tx_i\\y_j\t' + '\t'.join(y_nodes_print))
+    # for i in range(m+1):
+      # print(str(i) + '\t' + x_nodes_print[i] + '\t' + '\t'.join(['%g' % d for d in Delta[i, :].tolist()]))
+
+    # print('D_forest:')
+    # print('i\\j\t\t' + '\t'.join(['%d' % j for j in range(n+1)]))
+    # print('\tx_i\\y_j\t' + '\t'.join(y_nodes_print))
+    # for i in range(m+1):
+      # print(str(i) + '\t' + x_nodes_print[i] + '\t' + '\t'.join(['%g' % d for d in D_forest[i, :].tolist()]))
+
+    # print('D_tree:')
+    # print('i\\j\t\t' + '\t'.join(['%d' % j for j in range(n+1)]))
+    # print('\tx_i\\y_j\t' + '\t'.join(y_nodes_print))
+    # for i in range(m+1):
+      # print(str(i) + '\t' + x_nodes_print[i] + '\t' + '\t'.join(['%g' % d for d in D_tree[i, :].tolist()]))
+
     # set up temporary variables for backtracing
     cdef int k
     cdef int l
@@ -756,6 +780,7 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
         i, j, mode = stk.pop()
         # print('pop (%d, %d, %d)' % (i, j, mode))
         if mode == 0:
+            # --- tree edit mode ---
             # first, check if we only wish to delete/insert
             if i == -1:
                 # print('insert %d' % j)
@@ -844,6 +869,7 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
                             stk.append((-1, j_l, 0))
                     continue
         elif mode == 1:
+            # --- forest edit mode ---
             # print('continuing forest alignment at (%d, %d)' % (i, j))
             m_i = len(x_adj[i])
             n_j = len(y_adj[j])
@@ -902,8 +928,15 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
                     # if pi[m_i + l] < n_j, tree j_l should be inserted
                     rep_cost += D_tree[m, j_l]
             # check if forest replacement is optimal
+            # print('rep_cost = %g with alignment %s' % (rep_cost, str(pi)))
+            # print('C matrix was')
+            # print('i\\j\t' + '\t'.join(['%d' % j_l for j_l in y_adj[j]]))
+            # for k in range(m_i):
+              # print(str(x_adj[i][k]) + '\t' + '\t'.join(['%g' % d for d in C[k, :].tolist()]))
+            # for l in range(n_j):
+              # print(str(y_adj[j][l]) + '\t' + '\t'.join(['%g' % d for d in C[m_i+l, :].tolist()]))
             if D_forest[i, j] + _BACKTRACE_TOL > rep_cost:
-                # print('forest replacement with alignment %s co-optimal' % str(pi))
+                # print('forest replacement is co-optimal')
                 # if replacement is co-optimal, perform all
                 # deletion/insertion/replacements of subtrees
                 # dictated by the Hungarian result
@@ -949,7 +982,7 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
                 # accordingly, we need to consider the cost of editing
                 # tree i into tree j_l plus the cost o inserting all other
                 # children of j.
-                ins_cost = D_tree[i, j_l] + D_tree[m, j] - D_tree[m, j_l]
+                ins_cost = D_forest[i, j_l] + D_forest[m, j] - D_forest[m, j_l]
                 if D_forest[i, j] + _BACKTRACE_TOL > ins_cost:
                     l_min = l
                     break
@@ -966,7 +999,8 @@ def uted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
                     else:
                         # insert all children of j except j_l
                         stk.append((-1, j_l, 0))
-            continue
+                continue
+            raise ValueError('Internal error: no option was co-optimal')
         else:
             raise ValueError('Internal error: Unrecognized mode: %s' % str(mode))
         # if nothing is co-optimal, raise an exception

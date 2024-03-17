@@ -28,7 +28,7 @@ from edist.ted import outermost_right_leaves
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.2.0'
+__version__ = '1.2.2'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 

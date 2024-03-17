@@ -136,14 +136,17 @@ class TestUTED(unittest.TestCase):
       tree_utils.check_dfs_structure(y_adj)
 
       def delta3(x, y):
+          if x is None or y is None:
+            return 1.
           if x == y:
               return 0.
           else:
               return 1.
 
       alignment = uted.uted_backtrace(x_nodes, x_adj, y_nodes, y_adj)
-      print(alignment.cost(x_nodes, y_nodes, delta3))
-      print(uted.uted(x_nodes, x_adj, y_nodes, y_adj, delta3))
+      d_align   = alignment.cost(x_nodes, y_nodes, delta3)
+      d_uted    = uted.uted(x_nodes, x_adj, y_nodes, y_adj, delta3)
+      self.assertEqual(d_align, d_uted)
 
 
     def test_munkres(self):
