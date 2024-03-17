@@ -247,7 +247,7 @@ def dtw_string(str x, str y):
     return D[0,0]
 
 @cython.boundscheck(False)
-cdef void dtw_c(const double[:,:] Delta, double[:,:] D) nogil noexcept:
+cdef void dtw_c(const double[:,:] Delta, double[:,:] D) noexcept nogil:
     """ Computes the dynamic time warping distance between two input sequences
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.

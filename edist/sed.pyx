@@ -102,7 +102,7 @@ def _sed(x, y, delta):
 
 
 @cython.boundscheck(False)
-cdef void sed_c(const double[:,:] Delta, const double[:] Delta_del, const double[:] Delta_ins, double[:,:] D) nogil noexcept:
+cdef void sed_c(const double[:,:] Delta, const double[:] Delta_del, const double[:] Delta_ins, double[:,:] D) noexcept nogil:
     """ Computes the sequence edit distance between two input sequences
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.
@@ -586,7 +586,7 @@ def sed_string(str x, str y):
     return D[0,0]
 
 @cython.boundscheck(False)
-cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) nogil noexcept:
+cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) noexcept nogil:
     """ Computes the standard sequence edit distance between two input sequences
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.

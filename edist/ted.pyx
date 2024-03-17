@@ -289,7 +289,7 @@ def keyroots(long[:] orl):
 
 
 @cython.boundscheck(False)
-cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, double[:,:] D_tree) nogil noexcept:
+cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, double[:,:] D_tree) noexcept nogil:
     """ This method is internal and performs the actual tree edit distance
     computation for trees x and y in pure C.
 
@@ -949,7 +949,7 @@ def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     return x_orl, x_kr, y_orl, y_kr, Delta, D_forest, D_tree
 
 @cython.boundscheck(False)
-cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const long[:,:] Delta, long[:,:] D, long[:,:] D_tree) nogil noexcept:
+cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const long[:,:] Delta, long[:,:] D, long[:,:] D_tree) noexcept nogil:
     """ This method is internal and performs the actual standard tree edit
     distance computation for trees x and y in pure C.
 
