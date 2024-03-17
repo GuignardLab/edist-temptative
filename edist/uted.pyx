@@ -182,7 +182,7 @@ def adjmat_(adj):
 cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const long[:] deg_y, 
     const double[:,:] Delta, double[:,:] D_forest, double[:,:] D_tree,
     double[:, :] C, int[:, :] Stars, int[:, :] Primes,
-    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) nogil:
+    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) noexcept nogil:
     """ This method is internal and performs the actual tree edit distance
     computation for trees x and y in pure C.
 
@@ -436,7 +436,7 @@ cdef double min3(double a, double b, double c) nogil:
 
 @cython.boundscheck(False)
 cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
-    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) nogil:
+    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) noexcept nogil:
     """ Implements the munkres algorithm to find a minimal matching
     for the cost matrix C. All other inputs are auxiliary matrices
     and vectors for computation.
