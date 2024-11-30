@@ -972,7 +972,7 @@ def backtrace_matrix(x, y, grammar, deltas):
     # compute the forward tensor Alpha, which contains the number of
     # co-optimal alignment paths from cell [start_idx, 0, 0] to cell [r, i, j]
     Alpha = np.zeros((len(grammar._nonterminals), m+1, n+1), dtype=int)
-    cdef long[:,:, :] Alpha_view = Alpha
+    cdef long long[:,:, :] Alpha_view = Alpha
     Alpha_view[start_idx, 0, 0] = 1
     # build a queue of cells which we still need to process
     q = [(start_idx, 0, 0)]
@@ -980,7 +980,7 @@ def backtrace_matrix(x, y, grammar, deltas):
     visited = set()
     # initialize temporary variables
     cdef int found_coopt = False
-    cdef long num_coopts = 0
+    cdef long long num_coopts = 0
     while(q):
         (r, i, j) = heapq.heappop(q)
         if((i, j) in visited):
@@ -1047,7 +1047,7 @@ def backtrace_matrix(x, y, grammar, deltas):
     # compute the backward matrix Beta, which contains the number of
     # co-optimal alignment paths from cell [s, i, j] to cells [accepting, m, n]
     Beta = np.zeros((len(grammar._nonterminals), m+1, n+1), dtype=int)
-    cdef long[:,:,:] Beta_view = Beta
+    cdef long long[:,:,:] Beta_view = Beta
     for r in accpt_idxs:
         Beta_view[r, m, n] = 1
     # retrieve the inverse adjacency list format of the grammar
@@ -1113,11 +1113,11 @@ def backtrace_matrix(x, y, grammar, deltas):
 
     # compute the output matrices, specifying how often each operation was used
     K_rep = np.zeros((len(grammar._reps), m, n), dtype=int)
-    cdef long[:,:,:] K_rep_view = K_rep
+    cdef long long[:,:,:] K_rep_view = K_rep
     K_del = np.zeros((len(grammar._dels), m), dtype=int)
-    cdef long[:,:] K_del_view = K_del
+    cdef long long[:,:] K_del_view = K_del
     K_ins = np.zeros((len(grammar._inss), n), dtype=int)
-    cdef long[:,:] K_ins_view = K_ins
+    cdef long long[:,:] K_ins_view = K_ins
     for (r, i, j) in visited:
         num_coopts = Alpha_view[r, i, j]
         if(i == m):

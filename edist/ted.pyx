@@ -199,7 +199,7 @@ def outermost_right_leaves(list adj):
     # the array into which we will write the outermost right leaves for each
     # node
     orl = np.full(m, -1, dtype=int)
-    cdef long[:] orl_view = orl
+    cdef long long[:] orl_view = orl
     # a temporary variable for the current outermost right leaf
     cdef int r
     # iterate over all nodes to retrieve the respective outermost right leave
@@ -223,7 +223,7 @@ def outermost_right_leaves(list adj):
     return orl
 
 
-def keyroots(long[:] orl):
+def keyroots(long long[:] orl):
     """ Computes the keyroots of a tree based on its outermost right leaf
     array. The keyroot for a node i is defined as the lowest k, such that
     orl[i] = orl[k].
@@ -244,7 +244,7 @@ def keyroots(long[:] orl):
     cdef int m = len(orl)
     # a temporary array to store the keyroots for each outermost right leaf
     kr = np.full(m, -1, dtype=int)
-    cdef long[:] kr_view = kr
+    cdef long long[:] kr_view = kr
     # a variable to count the number of keyroots
     cdef int K = 0
     # iterate over all nodes
@@ -262,7 +262,7 @@ def keyroots(long[:] orl):
     # in a next iteration, generate a new array which only contains
     # the defined keyroots
     keyroots = np.zeros(K, dtype=int)
-    cdef long[:] keyroots_view = keyroots
+    cdef long long[:] keyroots_view = keyroots
     # insert and sort via insertionsort
     # counting index for the current keyroot
     cdef int k
@@ -289,7 +289,7 @@ def keyroots(long[:] orl):
 
 
 @cython.boundscheck(False)
-cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, double[:,:] D_tree) noexcept nogil:
+cdef void _ted_c(const long long[:] x_orl, const long long[:] x_kr, const long long[:] y_orl, const long long[:] y_kr, const double[:,:] Delta, double[:,:] D, double[:,:] D_tree) noexcept nogil:
     """ This method is internal and performs the actual tree edit distance
     computation for trees x and y in pure C.
 
@@ -300,13 +300,13 @@ cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, c
 
     Parameters
     ----------
-    x_orl: long array
+    x_orl: long long array
         the outermost right leaves for tree x (int array of length m).
-    x_kr: long array
+    x_kr: long long array
         the keyroots for tree x in descending order (int array).
-    y_orl: long array
+    y_orl: long long array
         the outermost right leaves for tree y (int array of length n).
-    y_kr: long array
+    y_kr: long long array
         the keyroots for tree y in descending order (int array).
     Delta: double matrix
         an (m+1) x (n+1) matrix, where Delta[i,j] for i < m, j < n is the
@@ -332,13 +332,13 @@ cdef void _ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, c
     cdef int k
     cdef int l
     # for the nodes in the subtrees rooted at the keyroots
-    cdef long i
-    cdef long j
+    cdef long long i
+    cdef long long j
     # and temporary variables for the keyroots and the outermost right leaves
-    cdef long i_0
-    cdef long j_0
-    cdef long i_max
-    cdef long j_max
+    cdef long long i_0
+    cdef long long j_0
+    cdef long long i_max
+    cdef long long j_max
 
     # iterate over all pairwise combinations of keyroots
     for k in range(K):
@@ -464,7 +464,7 @@ def ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = None):
     _ted_backtrace(x_orl, y_orl, Delta, D, D_tree, ali, 0, 0)
     return ali
 
-def _ted_backtrace(const long[:] x_orl, const long[:] y_orl, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, ali, int k, int l):
+def _ted_backtrace(const long long[:] x_orl, const long long[:] y_orl, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, ali, int k, int l):
     """ Internal function; call ted_backtrace instead.
 
         Performs the backtracing for the subtree rooted at k in x versus the
@@ -621,7 +621,7 @@ def ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None, delta = N
     # return results
     return P, K, k
 
-def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, Ks, long[:,:] Kappa, int k, int l):
+def _ted_backtrace_matrix(const long long[:] x_orl, const long long[:] x_kr, const long long[:] y_orl, const long long[:] y_kr, const double[:,:] Delta, double[:,:] D, const double[:,:] D_tree, Ks, long long[:,:] Kappa, int k, int l):
     """ Internal function; call ted_backtrace_matrix instead.
 
         Performs the backtracing for the subtree rooted at k in x versus the
@@ -643,7 +643,7 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
     # compute the forward matrix Alpha, which contains the number of
     # co-optimal alignment paths from cell [k, l, k, l] to cell [k, l, i, j]
     Alpha = np.zeros((m_k+1, n_l+1), dtype=int)
-    cdef long[:, :] Alpha_view = Alpha
+    cdef long long[:, :] Alpha_view = Alpha
     # we start with a single path
     Alpha_view[0, 0] = 1
     cdef int i
@@ -768,7 +768,7 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
     # number of co-optimal alignment paths from cell [k, l, i, j] to cell
     # [k, l, m_k, n_l]
     Beta = np.zeros((m_k+1, n_l+1), dtype=int)
-    cdef long[:, :] Beta_view = Beta
+    cdef long long[:, :] Beta_view = Beta
     Beta_view[m_k, n_l] = 1
     # add (0,0) to the visited set to ensure consistency because we started
     # at (1, 1) during forward computation
@@ -830,8 +830,8 @@ def _ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:]
 
     # initialize the counting matrix for the current subtree
     K = np.zeros((m_k, n_l), dtype=int)
-    cdef long[:,:] K_view = K
-    cdef long[:,:] K_ij
+    cdef long long[:,:] K_view = K
+    cdef long long[:,:] K_ij
     cdef int i2
     cdef int j2
     # compute content of K
@@ -927,7 +927,7 @@ def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     cdef int n = len(y_nodes)
     # An array to store which pairs of symbols in x and y are equal
     Delta = np.zeros((m, n), dtype=int)
-    cdef long[:,:] Delta_view = Delta
+    cdef long long[:,:] Delta_view = Delta
     cdef int i
     cdef int j
     for i in range(m):
@@ -949,7 +949,7 @@ def _standard_ted(x_nodes, x_adj, y_nodes = None, y_adj = None):
     return x_orl, x_kr, y_orl, y_kr, Delta, D_forest, D_tree
 
 @cython.boundscheck(False)
-cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const long[:,:] Delta, long[:,:] D, long[:,:] D_tree) noexcept nogil:
+cdef void _std_ted_c(const long long[:] x_orl, const long long[:] x_kr, const long long[:] y_orl, const long long[:] y_kr, const long long[:,:] Delta, long long[:,:] D, long long[:,:] D_tree) noexcept nogil:
     """ This method is internal and performs the actual standard tree edit
     distance computation for trees x and y in pure C.
 
@@ -960,21 +960,21 @@ cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_or
 
     Parameters
     ----------
-    x_orl: long array
+    x_orl: long long array
         the outermost right leaves for tree x (int array of length m).
-    x_kr: long array
+    x_kr: long long array
         the keyroots for tree x in descending order (int array).
-    y_orl: long array
+    y_orl: long long array
         the outermost right leaves for tree y (int array of length n).
-    y_kr: long array
+    y_kr: long long array
         the keyroots for tree y in descending order (int array).
-    Delta: long matrix
+    Delta: long long matrix
         an (m+1) x (n+1) matrix, where Delta[i,j] for i < m, j < n is the
         cost of replacing x[i] with y[j], where Delta[i,n] is the cost of
         deleting x[i], and where Delta[m,j] is the cost of inserting y[j].
-    D: long matrix
+    D: long long matrix
         an empty (m+1) x (n+1) matrix used for temporary computations.
-    D_tree: long matrix
+    D_tree: long long matrix
         an empty m x n matrix. After this method has run, D_tree[i,j] will
         be the tree edit distance between the subtree rooted at i and the
         subtree rooted at j.
@@ -992,13 +992,13 @@ cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_or
     cdef int k
     cdef int l
     # for the nodes in the subtrees rooted at the keyroots
-    cdef long i
-    cdef long j
+    cdef long long i
+    cdef long long j
     # and temporary variables for the keyroots and the outermost right leaves
-    cdef long i_0
-    cdef long j_0
-    cdef long i_max
-    cdef long j_max
+    cdef long long i_0
+    cdef long long j_0
+    cdef long long i_max
+    cdef long long j_max
 
     # iterate over all pairwise combinations of keyroots
     for k in range(K):
@@ -1044,7 +1044,7 @@ cdef void _std_ted_c(const long[:] x_orl, const long[:] x_kr, const long[:] y_or
                                       1 + D[i,j+1] # insertion
                                  )
 
-cdef long min3_int(long a, long b, long c) nogil:
+cdef long long min3_int(long long a, long long b, long long c) nogil:
     """ Computes the minimum of three numbers.
 
     Parameters
@@ -1124,7 +1124,7 @@ def standard_ted_backtrace(x_nodes, x_adj, y_nodes = None, y_adj = None):
     _standard_ted_backtrace(x_orl, y_orl, Delta, D, D_tree, ali, 0, 0)
     return ali
 
-def _standard_ted_backtrace(const long[:] x_orl, const long[:] y_orl, const long[:,:] Delta, long[:,:] D, const long[:,:] D_tree, ali, int k, int l):
+def _standard_ted_backtrace(const long long[:] x_orl, const long long[:] y_orl, const long long[:,:] Delta, long long[:,:] D, const long long[:,:] D_tree, ali, int k, int l):
     """ Internal function; call standard_ted_backtrace instead.
 
         Performs the backtracing for the subtree rooted at k in x versus the
@@ -1272,7 +1272,7 @@ def standard_ted_backtrace_matrix(x_nodes, x_adj, y_nodes = None, y_adj = None):
     # return results
     return P, K, k
 
-def _standard_ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, const long[:] y_orl, const long[:] y_kr, const long[:,:] Delta, long[:,:] D, const long[:,:] D_tree, Ks, long[:,:] Kappa, int k, int l):
+def _standard_ted_backtrace_matrix(const long long[:] x_orl, const long long[:] x_kr, const long long[:] y_orl, const long long[:] y_kr, const long long[:,:] Delta, long long[:,:] D, const long long[:,:] D_tree, Ks, long long[:,:] Kappa, int k, int l):
     """ Internal function; call standard_ted_backtrace_matrix instead.
 
         Performs the backtracing for the subtree rooted at k in x versus the
@@ -1294,12 +1294,12 @@ def _standard_ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, cons
     # compute the forward matrix Alpha, which contains the number of
     # co-optimal alignment paths from cell [k, l, k, l] to cell [k, l, i, j]
     Alpha = np.zeros((m_k+1, n_l+1), dtype=int)
-    cdef long[:, :] Alpha_view = Alpha
+    cdef long long[:, :] Alpha_view = Alpha
     # we start with a single path
     Alpha_view[0, 0] = 1
     cdef int i
     cdef int j
-    cdef long[:,:] D_kl
+    cdef long long[:,:] D_kl
     if(k == 0 and l == 0):
         D_kl = D
     else:
@@ -1414,7 +1414,7 @@ def _standard_ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, cons
     # number of co-optimal alignment paths from cell [k, l, i, j] to cell
     # [k, l, m_k, n_l]
     Beta = np.zeros((m_k+1, n_l+1), dtype=int)
-    cdef long[:, :] Beta_view = Beta
+    cdef long long[:, :] Beta_view = Beta
     Beta_view[m_k, n_l] = 1
     # add (0,0) to the visited set to ensure consistency because we started
     # at (1, 1) during forward computation
@@ -1471,8 +1471,8 @@ def _standard_ted_backtrace_matrix(const long[:] x_orl, const long[:] x_kr, cons
 
     # initialize the counting matrix for the current subtree
     K = np.zeros((m_k, n_l), dtype=int)
-    cdef long[:,:] K_view = K
-    cdef long[:,:] K_ij
+    cdef long long[:,:] K_view = K
+    cdef long long[:,:] K_ij
     cdef int i2
     cdef int j2
     # compute content of K

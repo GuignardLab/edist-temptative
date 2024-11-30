@@ -189,7 +189,7 @@ def seted_backtrace(x, y, delta = None):
     d, J = _seted(x, y, delta)
     return _to_alignment(J, len(x), len(y))
 
-def _to_alignment(long[:] J, int m, int n):
+def _to_alignment(long long[:] J, int m, int n):
     """ Transforms a given mapping to an alignment object.
 
     Parameters

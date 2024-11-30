@@ -397,7 +397,7 @@ def sed_backtrace_matrix(x, y, delta = None):
     # compute the forward matrix Alpha, which contains the number of
     # co-optimal alignment paths from cell [0, 0] to cell [i, j]
     Alpha = np.zeros((m+1, n+1), dtype=int)
-    cdef long[:,:] Alpha_view = Alpha
+    cdef long long[:,:] Alpha_view = Alpha
     Alpha_view[0, 0] = 1
     # build a queue of cells which we still need to process
     q = [(0, 0)]
@@ -407,7 +407,7 @@ def sed_backtrace_matrix(x, y, delta = None):
     cdef int found_coopt = False
     cdef int i
     cdef int j
-    cdef long k = 0
+    cdef long long k = 0
     while(q):
         (i, j) = heapq.heappop(q)
         if((i, j) in visited):
@@ -449,7 +449,7 @@ def sed_backtrace_matrix(x, y, delta = None):
     # compute the backward matrix Beta, which contains the number of
     # co-optimal alignment paths from cell [i, j] to cell [m, n]
     Beta = np.zeros((m+1, n+1), dtype=int)
-    cdef long[:,:] Beta_view = Beta
+    cdef long long[:,:] Beta_view = Beta
     Beta_view[m, n] = 1
     # iterate in downward lexigraphic order over the visited cells
     for (i, j) in sorted(visited, reverse = True):
@@ -487,7 +487,7 @@ def sed_backtrace_matrix(x, y, delta = None):
     # compute a counting matrix specifying how often each alignment has
     # occured by multiplying alpha and beta values.
     K = np.zeros((m, n), dtype=int)
-    cdef long[:,:] K_view = K
+    cdef long long[:,:] K_view = K
     for (i, j) in visited:
         if(i == m or j == n):
             continue
@@ -536,7 +536,7 @@ def _standard_sed(x, y):
     cdef int n = len(y)
     # First, compute all pairwise replacements
     Delta = np.zeros((m, n), dtype=int)
-    cdef long[:,:] Delta_view = Delta
+    cdef long long[:,:] Delta_view = Delta
     cdef int i
     cdef int j
     for i in range(m):
@@ -572,7 +572,7 @@ def sed_string(str x, str y):
     cdef int n = len(y)
     # First, compute all pairwise replacements
     Delta = np.zeros((m, n), dtype=int)
-    cdef long[:,:] Delta_view = Delta
+    cdef long long[:,:] Delta_view = Delta
     cdef int i
     cdef int j
     for i in prange(m, nogil=True):
@@ -586,16 +586,16 @@ def sed_string(str x, str y):
     return D[0,0]
 
 @cython.boundscheck(False)
-cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) noexcept nogil:
+cdef void standard_sed_c(const long long[:,:] Delta, long long[:,:] D) noexcept nogil:
     """ Computes the standard sequence edit distance between two input sequences
     with pairwise element distances Delta and an (empty) dynamic programming
     matrix D.
 
     Parameters
     ----------
-    Delta: long matrix
+    Delta: long long matrix
         a m x n matrix containing the pairwise element distances.
-    D: long matrix
+    D: long long matrix
         another m x n matrix to which the output will be written.
         The sequence edit distance will be in cell [0, 0] after the computation
         is finished.
@@ -620,7 +620,7 @@ cdef void standard_sed_c(const long[:,:] Delta, long[:,:] D) noexcept nogil:
                           1 + D[i+1, j],
                           1 + D[i, j+1])
 
-cdef long min3_int(long a, long b, long c) nogil:
+cdef long long min3_int(long long a, long long b, long long c) nogil:
     """ Computes the minimum of three numbers.
 
     Parameters
@@ -676,8 +676,8 @@ def standard_sed_backtrace(x, y):
     cdef int n = len(y)
     # Compute the standard edit distance first
     Delta, D = _standard_sed(x, y)
-    cdef long[:,:] Delta_view = Delta
-    cdef long[:,:] D_view = D
+    cdef long long[:,:] Delta_view = Delta
+    cdef long long[:,:] D_view = D
 
     # Then, compute the backtrace
     cdef int i = 0
@@ -740,8 +740,8 @@ def standard_sed_backtrace_stochastic(x, y):
     cdef int n = len(y)
     # Compute the standard edit distance first
     Delta, D = _standard_sed(x, y)
-    cdef long[:,:] Delta_view = Delta
-    cdef long[:,:] D_view = D
+    cdef long long[:,:] Delta_view = Delta
+    cdef long long[:,:] D_view = D
 
     # Then, compute the backtrace
     cdef int i = 0
@@ -850,13 +850,13 @@ def standard_sed_backtrace_matrix(x, y):
     cdef int n = len(y)
     # Compute the standard edit distance first
     Delta, D = _standard_sed(x, y)
-    cdef long[:,:] Delta_view = Delta
-    cdef long[:,:] D_view = D
+    cdef long long[:,:] Delta_view = Delta
+    cdef long long[:,:] D_view = D
 
     # compute the forward matrix Alpha, which contains the number of
     # co-optimal alignment paths from cell [0, 0] to cell [i, j]
     Alpha = np.zeros((m+1, n+1), dtype=int)
-    cdef long[:,:] Alpha_view = Alpha
+    cdef long long[:,:] Alpha_view = Alpha
     Alpha_view[0, 0] = 1
     # build a queue of cells which we still need to process
     q = [(0, 0)]
@@ -866,7 +866,7 @@ def standard_sed_backtrace_matrix(x, y):
     cdef int found_coopt = False
     cdef int i
     cdef int j
-    cdef long k = 0
+    cdef long long k = 0
     while(q):
         (i, j) = heapq.heappop(q)
         if((i, j) in visited):
@@ -908,7 +908,7 @@ def standard_sed_backtrace_matrix(x, y):
     # compute the backward matrix Beta, which contains the number of
     # co-optimal alignment paths from cell [i, j] to cell [m, n]
     Beta = np.zeros((m+1, n+1), dtype=int)
-    cdef long[:,:] Beta_view = Beta
+    cdef long long[:,:] Beta_view = Beta
     Beta_view[m, n] = 1
     # iterate in downward lexigraphic order over the visited cells
     for (i, j) in sorted(visited, reverse = True):
@@ -946,7 +946,7 @@ def standard_sed_backtrace_matrix(x, y):
     # compute a counting matrix specifying how often each alignment has
     # occured by multiplying alpha and beta values.
     K = np.zeros((m, n), dtype=int)
-    cdef long[:,:] K_view = K
+    cdef long long[:,:] K_view = K
     for (i, j) in visited:
         if(i == m or j == n):
             continue

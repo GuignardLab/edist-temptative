@@ -540,7 +540,7 @@ def dtw_backtrace_matrix(x, y, delta):
     # compute the forward matrix Alpha, which contains the number of
     # co-optimal alignment paths from cell [0, 0] to cell [i, j]
     Alpha = np.zeros((m, n), dtype=int)
-    cdef long[:,:] Alpha_view = Alpha
+    cdef long long[:,:] Alpha_view = Alpha
     Alpha_view[0, 0] = 1
     # build a queue of cells which we still need to process
     q = [(0, 0)]
@@ -548,7 +548,7 @@ def dtw_backtrace_matrix(x, y, delta):
     visited = set()
     # initialize temporary variables
     cdef int found_coopt = False
-    cdef long k = 0
+    cdef long long k = 0
     while(q):
         (i, j) = heapq.heappop(q)
         if((i, j) in visited):
@@ -592,7 +592,7 @@ def dtw_backtrace_matrix(x, y, delta):
     # compute the backward matrix Beta, which contains the number of
     # co-optimal alignment paths from cell [i, j] to cell [m-1, n-1]
     Beta = np.zeros((m, n), dtype=int)
-    cdef long[:,:] Beta_view = Beta
+    cdef long long[:,:] Beta_view = Beta
     Beta_view[m-1, n-1] = 1
     # iterate in downward lexigraphic order over the visited cells
     for (i, j) in sorted(visited, reverse = True):

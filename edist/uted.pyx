@@ -161,14 +161,14 @@ def adjmat_(adj):
     """ Converts an adjacency list into an int array """
     cdef int m = len(adj)
     degs = np.zeros(m, dtype=int)
-    cdef long[:] deg_view = degs
+    cdef long long[:] deg_view = degs
     cdef int i
     for i in range(m):
         deg_view[i] = len(adj[i])
 
-    cdef long max_deg = np.max(degs)
+    cdef long long max_deg = np.max(degs)
     Adj = np.zeros((m, max_deg), dtype=int)
-    cdef long[:, :] Adj_view = Adj
+    cdef long long[:, :] Adj_view = Adj
 
     cdef int k
     for i in range(m):
@@ -179,10 +179,10 @@ def adjmat_(adj):
 
 
 @cython.boundscheck(False)
-cdef void uted_c_(const long[:,:] A_x, const long[:] deg_x, const long[:,:] A_y, const long[:] deg_y, 
+cdef void uted_c_(const long long[:,:] A_x, const long long[:] deg_x, const long long[:,:] A_y, const long long[:] deg_y, 
     const double[:,:] Delta, double[:,:] D_forest, double[:,:] D_tree,
     double[:, :] C, int[:, :] Stars, int[:, :] Primes,
-    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) noexcept nogil:
+    int[:] row_covers, int[:] col_covers, long long[:, :] path, long long[:] pi) noexcept nogil:
     """ This method is internal and performs the actual tree edit distance
     computation for trees x and y in pure C.
 
@@ -436,7 +436,7 @@ cdef double min3(double a, double b, double c) nogil:
 
 @cython.boundscheck(False)
 cdef void munkres_(double[:, :] C, int[:, :] Stars, int[:, :] Primes,
-    int[:] row_covers, int[:] col_covers, long[:, :] path, long[:] pi) noexcept nogil:
+    int[:] row_covers, int[:] col_covers, long long[:, :] path, long long[:] pi) noexcept nogil:
     """ Implements the munkres algorithm to find a minimal matching
     for the cost matrix C. All other inputs are auxiliary matrices
     and vectors for computation.
