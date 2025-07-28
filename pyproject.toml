@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "cython"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edist"
+version = "1.2.2"
+authors = [{ name = "Benjamin Paassen", email = "bpaassen@techfak.uni-bielefeld.de" }]
+description = "Edit distance implementations in cython"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Cython",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "proto-dist-ml"
+]
+
+[project.urls]
+Homepage = "https://gitlab.ub.uni-bielefeld.de/bpaassen/python-edit-distances"
+
+[tool.setuptools]
+packages = ["edist"]
+
+ext-modules = [
+    { name = "edist.adp", sources = ["edist/adp.pyx"] },
+    { name = "edist.dtw", sources = ["edist/dtw.pyx"] },
+    { name = "edist.sed", sources = ["edist/sed.pyx"] },
+    { name = "edist.ted", sources = ["edist/ted.pyx"] },
+    { name = "edist.uted", sources = ["edist/uted.pyx"] },
+    { name = "edist.seted", sources = ["edist/seted.pyx"] },
+]
+
