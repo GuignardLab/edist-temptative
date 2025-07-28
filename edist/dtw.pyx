@@ -634,5 +634,5 @@ def dtw_backtrace_matrix(x, y, delta):
     K = Alpha * Beta
     # compute the final summary matrix by dividing K by the overall number
     # of co-optimal alignments
-    return K.astype(np.float) / Alpha_view[m-1, n-1], K, Alpha_view[m-1, n-1]
+    return K.astype(float) / Alpha_view[m-1, n-1], K, Alpha_view[m-1, n-1]
 
