@@ -3,6 +3,7 @@ Provides general utility functions to compute pairwise edit distances in
 parallel.
 
 """
+
 # Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
@@ -24,43 +25,45 @@ parallel.
 import multiprocessing as mp
 import numpy as np
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2023, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.2'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2023, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
 
 # The size of batches in parallel processing; this size has revealed
 # to be favourable in empiric tests, even for longer sequences.
 _BATCH_SIZE = 10
 
-def _batch_dist_with_indices(k, l, dist, X, Y, symmetric = False):
+
+def _batch_dist_with_indices(k, l, dist, X, Y, symmetric=False):
     D = np.zeros((len(X), len(Y)))
-    if(not symmetric):
+    if not symmetric:
         for k2 in range(len(X)):
             for l2 in range(len(Y)):
                 D[k2, l2] = dist(X[k2], Y[l2])
     else:
         for k2 in range(len(X)):
-            for l2 in range(k2+1, len(Y)):
+            for l2 in range(k2 + 1, len(Y)):
                 D[k2, l2] = dist(X[k2], Y[l2])
     return (k, l, D)
 
-def _batch_dist_with_indices_and_delta(k, l, dist, X, Y, delta, symmetric = False):
+
+def _batch_dist_with_indices_and_delta(k, l, dist, X, Y, delta, symmetric=False):
     D = np.zeros((len(X), len(Y)))
-    if(not symmetric):
+    if not symmetric:
         for k2 in range(len(X)):
             for l2 in range(len(Y)):
-                D[k2, l2] = dist(X[k2], Y[l2], delta = delta)
+                D[k2, l2] = dist(X[k2], Y[l2], delta=delta)
     else:
         for k2 in range(len(X)):
-            for l2 in range(k2+1, len(Y)):
-                D[k2, l2] = dist(X[k2], Y[l2], delta = delta)
+            for l2 in range(k2 + 1, len(Y)):
+                D[k2, l2] = dist(X[k2], Y[l2], delta=delta)
     return (k, l, D)
 
-def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
-    """ Computes the pairwise edit distances between the objects in
+
+def pairwise_distances(Xs, Ys, dist, delta=None, num_jobs=8):
+    """Computes the pairwise edit distances between the objects in
     Xs and the objects in Ys. Each object in Xs and Ys needs to be a valid
     input for the given distance function, i.e. a sequence or a tree.
 
@@ -96,22 +99,32 @@ def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
     # set up a parallel processing pool
     pool = mp.Pool(num_jobs)
     # set up the result matrix
-    D = np.zeros((K,L))
+    D = np.zeros((K, L))
 
     # start off all parallel processing jobs
     results = []
-    if(delta is None):
+    if delta is None:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(0, L, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, L)
-                results.append(pool.apply_async(_batch_dist_with_indices, args=(k, l, dist, Xs[k:k_hi], Ys[l:l_hi])))
+                results.append(
+                    pool.apply_async(
+                        _batch_dist_with_indices,
+                        args=(k, l, dist, Xs[k:k_hi], Ys[l:l_hi]),
+                    )
+                )
     else:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(0, L, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, L)
-                results.append(pool.apply_async(_batch_dist_with_indices_and_delta, args=(k, l, dist, Xs[k:k_hi], Ys[l:l_hi], delta)))
+                results.append(
+                    pool.apply_async(
+                        _batch_dist_with_indices_and_delta,
+                        args=(k, l, dist, Xs[k:k_hi], Ys[l:l_hi], delta),
+                    )
+                )
 
     # close the pool
     pool.close()
@@ -129,8 +142,9 @@ def pairwise_distances(Xs, Ys, dist, delta = None, num_jobs = 8):
     # return the distance matrix
     return D
 
-def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
-    """ Computes the pairwise edit distances between the objects in
+
+def pairwise_distances_symmetric(Xs, dist, delta=None, num_jobs=8):
+    """Computes the pairwise edit distances between the objects in
     Xs, assuming that the distance measure is symmetric. Each object in Xs
     needs to be a valid input for the given distance function, i.e. a sequence
     or a tree. Due to symmetry, this method is about double as fast compared
@@ -165,7 +179,7 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
     # set up a parallel processing pool
     pool = mp.Pool(num_jobs)
     # set up the result matrix
-    D = np.zeros((K,K))
+    D = np.zeros((K, K))
 
     # start off all parallel processing jobs.
     # In each job, we compute a _BATCH_SIZE x _BATCH_SIZE patch of the final
@@ -173,20 +187,30 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
     # serialization for starting a parallel processing job, because every
     # single worker can do more with the resources it gets.
     results = []
-    if(delta is None):
+    if delta is None:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(k, K, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, K)
                 symmetric = l == k
-                results.append(pool.apply_async(_batch_dist_with_indices, args=(k, l, dist, Xs[k:k_hi], Xs[l:l_hi], symmetric)))
+                results.append(
+                    pool.apply_async(
+                        _batch_dist_with_indices,
+                        args=(k, l, dist, Xs[k:k_hi], Xs[l:l_hi], symmetric),
+                    )
+                )
     else:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(k, K, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, K)
                 symmetric = l == k
-                results.append(pool.apply_async(_batch_dist_with_indices_and_delta, args=(k, l, dist, Xs[k:k_hi], Xs[l:l_hi], delta, symmetric)))
+                results.append(
+                    pool.apply_async(
+                        _batch_dist_with_indices_and_delta,
+                        args=(k, l, dist, Xs[k:k_hi], Xs[l:l_hi], delta, symmetric),
+                    )
+                )
 
     # close the pool
     pool.close()
@@ -207,6 +231,7 @@ def pairwise_distances_symmetric(Xs, dist, delta = None, num_jobs = 8):
     # return the distance matrix
     return D
 
+
 def _batch_backtrace_with_indices(k, l, dist, X, Y):
     B = []
     for k2 in range(len(X)):
@@ -215,6 +240,7 @@ def _batch_backtrace_with_indices(k, l, dist, X, Y):
             b_k2.append(dist(X[k2], Y[l2]))
         B.append(b_k2)
     return (k, l, B)
+
 
 def _batch_backtrace_with_indices_and_delta(k, l, dist, X, Y, delta):
     B = []
@@ -225,8 +251,9 @@ def _batch_backtrace_with_indices_and_delta(k, l, dist, X, Y, delta):
         B.append(b_k2)
     return (k, l, B)
 
-def pairwise_backtraces(Xs, Ys, dist_backtrace, delta = None, num_jobs = 8):
-    """ Computes the pairwise backtraces between the objects in
+
+def pairwise_backtraces(Xs, Ys, dist_backtrace, delta=None, num_jobs=8):
+    """Computes the pairwise backtraces between the objects in
     Xs and the objects in Ys. Each object in Xs and Ys needs to be a valid
     input for the given distance function, i.e. a sequence or a tree.
 
@@ -269,18 +296,28 @@ def pairwise_backtraces(Xs, Ys, dist_backtrace, delta = None, num_jobs = 8):
 
     # start off all parallel processing jobs
     results = []
-    if(delta is None):
+    if delta is None:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(0, L, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, L)
-                results.append(pool.apply_async(_batch_backtrace_with_indices, args=(k, l, dist_backtrace, Xs[k:k_hi], Ys[l:l_hi])))
+                results.append(
+                    pool.apply_async(
+                        _batch_backtrace_with_indices,
+                        args=(k, l, dist_backtrace, Xs[k:k_hi], Ys[l:l_hi]),
+                    )
+                )
     else:
         for k in range(0, K, _BATCH_SIZE):
             k_hi = min(k + _BATCH_SIZE, K)
             for l in range(0, L, _BATCH_SIZE):
                 l_hi = min(l + _BATCH_SIZE, L)
-                results.append(pool.apply_async(_batch_backtrace_with_indices_and_delta, args=(k, l, dist_backtrace, Xs[k:k_hi], Ys[l:l_hi], delta)))
+                results.append(
+                    pool.apply_async(
+                        _batch_backtrace_with_indices_and_delta,
+                        args=(k, l, dist_backtrace, Xs[k:k_hi], Ys[l:l_hi], delta),
+                    )
+                )
 
     # close the pool
     pool.close()

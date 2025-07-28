@@ -8,7 +8,8 @@ version = "1.2.2"
 authors = [{ name = "Benjamin Paassen", email = "bpaassen@techfak.uni-bielefeld.de" }]
 description = "Edit distance implementations in cython"
 readme = "README.md"
-license = { text = "GPL-3.0-or-later" }
+license = "GPL-3.0-or-later"
+license-files = [ "LICENSE.MD" ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -30,6 +31,12 @@ dependencies = [
     "proto-dist-ml"
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
 [project.urls]
 Homepage = "https://gitlab.ub.uni-bielefeld.de/bpaassen/python-edit-distances"
 
@@ -45,3 +52,19 @@ ext-modules = [
     { name = "edist.seted", sources = ["edist/seted.pyx"] },
 ]
 
+[tool.bumpver]
+current_version = "1.2.2"
+version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{version}"',
+]
+"edist/__init__.py" = [
+    '__version__ = "{version}"',
+]

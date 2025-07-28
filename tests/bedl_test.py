@@ -27,23 +27,23 @@ from scipy.spatial.distance import cdist
 import edist.sed as sed
 import edist.bedl as bedl
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.0'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 class TestBEDL(unittest.TestCase):
 
     def test_indexing(self):
-        alphabet = ['a', 'b', 'c']
+        alphabet = ["a", "b", "c"]
 
-        expected_idx = {'a' : 0, 'b' : 1, 'c' : 2}
+        expected_idx = {"a": 0, "b": 1, "c": 2}
         actual_idx = bedl.create_index(alphabet)
         self.assertEqual(expected_idx, actual_idx)
 
-        Xs = ['a', 'bac', 'bbb']
+        Xs = ["a", "bac", "bbb"]
         expected_Ys = [[0], [1, 0, 2], [1, 1, 1]]
         actual_Ys = bedl.index_data(Xs, actual_idx)
         self.assertEqual(expected_Ys, actual_Ys)
@@ -58,7 +58,9 @@ class TestBEDL(unittest.TestCase):
         D = cdist(embedding, embedding)
         # we expect that this should be a matrix with zero on the
         # diagonal and only ones otherwise
-        np.testing.assert_allclose(D, np.ones((n+1, n+1)) - np.eye(n+1), atol=1E-3)
+        np.testing.assert_allclose(
+            D, np.ones((n + 1, n + 1)) - np.eye(n + 1), atol=1e-3
+        )
 
     def test_reduce_backtrace(self):
         # create two index lists
@@ -67,20 +69,20 @@ class TestBEDL(unittest.TestCase):
 
         # set up expected reduced matrix
         expected_Phat = np.zeros((3, 3))
-        expected_Phat[0, 1] = 1.
-        expected_Phat[0, 2] = 2.
+        expected_Phat[0, 1] = 1.0
+        expected_Phat[0, 2] = 2.0
 
         # compute actual reduced matrix
         P, _, _ = sed.standard_sed_backtrace_matrix(x, y)
         Phat = bedl.reduce_backtrace(P, x, y, 2)
 
-        np.testing.assert_allclose(Phat, expected_Phat, atol=1E-3)
+        np.testing.assert_allclose(Phat, expected_Phat, atol=1e-3)
 
     def test_fit(self):
         # create a very simple string dataset where we need to learn that
         # a <-> b replacements should be cheap and c <-> d replacements
         # should be cheap
-        X = ['ab', 'ba', 'cd', 'dc']
+        X = ["ab", "ba", "cd", "dc"]
         y = np.array([0, 0, 1, 1])
         # initialize a BEDL model with one prototype per class
         model = bedl.BEDL(1)
@@ -93,5 +95,6 @@ class TestBEDL(unittest.TestCase):
         self.assertTrue(np.all(Delta[:2, 2:] > 0.1))
         self.assertTrue(np.all(Delta[2:, :2] > 0.1))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

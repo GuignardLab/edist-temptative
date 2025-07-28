@@ -2,6 +2,7 @@
 Provides general utility functions to process trees.
 
 """
+
 # Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
@@ -24,15 +25,15 @@ import json
 import os
 import numpy as np
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.2'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 def root(adj):
-    """ Returns the root of a tree and raises an error if the input adjacency
+    """Returns the root of a tree and raises an error if the input adjacency
     matrix does not correspond to a tree.
 
     Parameters
@@ -51,27 +52,32 @@ def root(adj):
         if the given adjacency list does not form a tree.
 
     """
-    if(not adj):
+    if not adj:
         raise ValueError("The input tree is empty!")
 
     par = np.full(len(adj), -1, dtype=int)
     for i in range(len(adj)):
         for j in adj[i]:
-            if(par[j] < 0):
+            if par[j] < 0:
                 par[j] = i
             else:
-                raise ValueError("Input is not a tree because node %d has multiple parents" % j)
+                raise ValueError(
+                    "Input is not a tree because node %d has multiple parents" % j
+                )
     root = -1
     for i in range(len(adj)):
-        if(par[i] < 0):
-            if(root < 0):
+        if par[i] < 0:
+            if root < 0:
                 root = i
             else:
-                raise ValueError("Input is not a tree because there is more than one root")
+                raise ValueError(
+                    "Input is not a tree because there is more than one root"
+                )
     return root
 
+
 def check_tree_structure(adj):
-    """ Verifies that a given adjacency list describes a tree.
+    """Verifies that a given adjacency list describes a tree.
 
     In particular, we build a parent representation of the tree and throw
     an exception if that fails. This is valid because trees are the subclass
@@ -98,14 +104,16 @@ def check_tree_structure(adj):
         for j in adj[i]:
             # if the parent of j is already defined, j has multiple parents
             # and this is not a tree
-            if(par[j] >= 0):
-                raise ValueError("Node %d has multiple parents (%d and %d)." % (j, par[j], i))
+            if par[j] >= 0:
+                raise ValueError(
+                    "Node %d has multiple parents (%d and %d)." % (j, par[j], i)
+                )
             par[j] = i
     return par
 
 
-def check_dfs_structure(adj, i = 0):
-    """ Verifies that a given adjacency list is in depth-first-search order,
+def check_dfs_structure(adj, i=0):
+    """Verifies that a given adjacency list is in depth-first-search order,
     in the sense that the descendants of a node i are all indices i+1, i+2,
     ... orl[i], where orl[i] is the outermost right leaf of i.
 
@@ -128,21 +136,21 @@ def check_dfs_structure(adj, i = 0):
         if the given adjacency list is not in DFS format.
 
     """
-    if(not adj):
+    if not adj:
         return 0
     # j iterates over all children of adj i
     for j in adj[i]:
         # check the current child
-        if(j != i + 1):
-            raise ValueError("Expected %d as next child, but got %d" % (i+1, j))
+        if j != i + 1:
+            raise ValueError("Expected %d as next child, but got %d" % (i + 1, j))
         # check the dfs structure of the current child
-        i = check_dfs_structure(adj, i+1)
+        i = check_dfs_structure(adj, i + 1)
     # return the current dfs index
     return i
 
 
 def to_dfs_structure(nodes, adj):
-    """ Re-orders a tree to conform to a depth-first search structure.
+    """Re-orders a tree to conform to a depth-first search structure.
 
     Note that this method performs a copy and leaves the original tree
     untouched.
@@ -184,8 +192,9 @@ def _to_dfs_structure(nodes_orig, adj_orig, nodes_dfs, adj_dfs, i):
         # re-order the current child
         _to_dfs_structure(nodes_orig, adj_orig, nodes_dfs, adj_dfs, j)
 
+
 def to_json(filename, nodes, adj):
-    """ Writes a tree in node list/adjacency list format to a JSON file.
+    """Writes a tree in node list/adjacency list format to a JSON file.
 
     Parameters
     ----------
@@ -202,8 +211,8 @@ def to_json(filename, nodes, adj):
         if the file is not accessible or the JSON writeout fails.
 
     """
-    with open(filename, 'w') as json_file:
-        json.dump({'nodes' : nodes, 'adj' : adj}, json_file, indent='\t')
+    with open(filename, "w") as json_file:
+        json.dump({"nodes": nodes, "adj": adj}, json_file, indent="\t")
 
 
 def from_json(filename):
@@ -229,16 +238,17 @@ def from_json(filename):
         depth first search order.
 
     """
-    with open(filename, 'r') as json_file:
+    with open(filename, "r") as json_file:
         tree = json.load(json_file)
-        nodes = tree['nodes']
-        adj = tree['adj']
+        nodes = tree["nodes"]
+        adj = tree["adj"]
         check_tree_structure(adj)
         check_dfs_structure(adj)
         return nodes, adj
 
+
 def dataset_from_json(path):
-    """ Reads trees in node list/adjacency list format from all JSON files in
+    """Reads trees in node list/adjacency list format from all JSON files in
     the given directory.
 
     Parameters
@@ -261,8 +271,8 @@ def dataset_from_json(path):
         first search order.
 
     """
-    if(not os.path.isdir(path)):
-        raise OSError('%s is not a directory or was not found' % str(path))
+    if not os.path.isdir(path):
+        raise OSError("%s is not a directory or was not found" % str(path))
 
     # list all files in the directory and sort them.
     files = os.listdir(path)
@@ -274,17 +284,18 @@ def dataset_from_json(path):
     for filename in files:
         # note that 'listdir' returns files relative to the input path, so
         # we have to put the input path in front.
-        filepath = path + '/' + filename
+        filepath = path + "/" + filename
         # check if the file is a json file.
-        if(not os.path.isfile(filepath) or not filename.endswith('.json')):
+        if not os.path.isfile(filepath) or not filename.endswith(".json"):
             continue
         # load the tree
         X.append(from_json(filepath))
         filenames.append(filename)
     return X, filenames
 
-def tree_to_string(nodes, adj, indent = False, with_indices = False):
-    """ Prints a tree in node list/adjacency list format as string.
+
+def tree_to_string(nodes, adj, indent=False, with_indices=False):
+    """Prints a tree in node list/adjacency list format as string.
 
     Parameters
     ----------
@@ -304,37 +315,52 @@ def tree_to_string(nodes, adj, indent = False, with_indices = False):
 
     """
     r = root(adj)
-    if(indent):
+    if indent:
         indent = 1
     else:
         indent = None
     # translate recursively
-    return _tree_to_string(nodes, adj, r, indent, with_indices = with_indices)
+    return _tree_to_string(nodes, adj, r, indent, with_indices=with_indices)
 
-def _tree_to_string(nodes, adj, i, indent = None, with_indices = False):
+
+def _tree_to_string(nodes, adj, i, indent=None, with_indices=False):
     # the initial string is just the node label
-    if(with_indices):
-        tree_string = '%d: %s' % (i, str(nodes[i]))
+    if with_indices:
+        tree_string = "%d: %s" % (i, str(nodes[i]))
     else:
         tree_string = str(nodes[i])
     # consider the case where node i has chidlren
-    if(adj[i]):
+    if adj[i]:
         # first, translate the children to their tree strings
         children_strings = []
         for j in adj[i]:
-            if(indent is None):
-                children_strings.append(_tree_to_string(nodes, adj, j, with_indices = with_indices))
+            if indent is None:
+                children_strings.append(
+                    _tree_to_string(nodes, adj, j, with_indices=with_indices)
+                )
             else:
-                children_strings.append(_tree_to_string(nodes, adj, j, indent + 1, with_indices = with_indices))
+                children_strings.append(
+                    _tree_to_string(
+                        nodes, adj, j, indent + 1, with_indices=with_indices
+                    )
+                )
         # and then join all these strings and append them in brackets
-        if(indent is None):
-            tree_string += '(' + ', '.join(children_strings) + ')'
+        if indent is None:
+            tree_string += "(" + ", ".join(children_strings) + ")"
         else:
-            tree_string += '(\n' + ('\t' * indent) + (',\n' + '\t' * indent).join(children_strings) + '\n' + ('\t' * (indent - 1)) + ')'
+            tree_string += (
+                "(\n"
+                + ("\t" * indent)
+                + (",\n" + "\t" * indent).join(children_strings)
+                + "\n"
+                + ("\t" * (indent - 1))
+                + ")"
+            )
     return tree_string
 
+
 def subtree(nodes, adj, i):
-    """ Returns the subtree rooted at node i in node list/adjacency list
+    """Returns the subtree rooted at node i in node list/adjacency list
     format.
 
     Parameters
@@ -360,8 +386,9 @@ def subtree(nodes, adj, i):
     _to_dfs_structure(nodes, adj, nodes_dfs, adj_dfs, i)
     return nodes_dfs, adj_dfs
 
+
 def parents(adj):
-    """ Returns the parent representation of the tree with the given
+    """Returns the parent representation of the tree with the given
     adjacency list.
 
     Parameters

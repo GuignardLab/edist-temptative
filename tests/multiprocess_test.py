@@ -31,52 +31,56 @@ from edist.alignment import Alignment
 from edist.sed import standard_sed_backtrace
 import edist.multiprocess as multiprocess
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.0'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 def kron_distance(x, y):
-    if(x == y):
-        return 0.
+    if x == y:
+        return 0.0
     else:
-        return 1.
+        return 1.0
+
 
 class TestMultiprocess(unittest.TestCase):
 
     def test_pairwise_dtw(self):
         # consider three example sequences
-        Xs = ['abc', 'aabbcc', 'dbc']
+        Xs = ["abc", "aabbcc", "dbc"]
         D_expected = np.array([[0, 0, 1], [0, 0, 2], [1, 2, 0]], dtype=float)
 
         # compute actual distances using dtw
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = dtw_string)
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist=dtw_string)
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = dtw_string)
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist=dtw_string)
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using general dtw and a delta function
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = dtw, delta = kron_distance)
+        D_actual = multiprocess.pairwise_distances(
+            Xs, Xs, dist=dtw, delta=kron_distance
+        )
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = dtw, delta = kron_distance)
+        D_actual = multiprocess.pairwise_distances_symmetric(
+            Xs, dist=dtw, delta=kron_distance
+        )
         np.testing.assert_array_equal(D_expected, D_actual)
-
 
     def test_pairwise_ted(self):
         # consider three example trees, one of them being empty
         x = []
         x_adj = []
         # the tree a(b(c, d), e)
-        y = ['a', 'b', 'c', 'd', 'e']
+        y = ["a", "b", "c", "d", "e"]
         y_adj = [[1, 4], [2, 3], [], [], []]
         # the tree f(g)
-        z = ['f', 'g']
+        z = ["f", "g"]
         z_adj = [[1], []]
 
         Xs = [(x, x_adj), (y, y_adj), (z, z_adj)]
@@ -85,29 +89,31 @@ class TestMultiprocess(unittest.TestCase):
         D_expected = np.array([[0, 5, 2], [5, 0, 5], [2, 5, 0]], dtype=int)
 
         # compute actual distances using the standard edit distance
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted)
+        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist=ted)
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted)
+        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist=ted)
         np.testing.assert_array_equal(D_expected, D_actual)
-
 
         # compute actual distances using the general edit distance
-        D_expected = np.array([[0., 5., 2.], [5., 0., 5.], [2., 5., 0.]])
-        D_actual = multiprocess.pairwise_distances(Xs, Xs, dist = ted, delta = kron_distance)
+        D_expected = np.array([[0.0, 5.0, 2.0], [5.0, 0.0, 5.0], [2.0, 5.0, 0.0]])
+        D_actual = multiprocess.pairwise_distances(
+            Xs, Xs, dist=ted, delta=kron_distance
+        )
         np.testing.assert_array_equal(D_expected, D_actual)
 
         # compute again using symmetric function
-        D_actual = multiprocess.pairwise_distances_symmetric(Xs, dist = ted, delta = kron_distance)
+        D_actual = multiprocess.pairwise_distances_symmetric(
+            Xs, dist=ted, delta=kron_distance
+        )
         np.testing.assert_array_equal(D_expected, D_actual)
-
 
     def test_pairwise_backtrace(self):
         # consider three example strings, one of them being empty
-        x = ''
-        y = 'abcde'
-        z = 'fg'
+        x = ""
+        y = "abcde"
+        z = "fg"
 
         Xs = [x, y, z]
 
@@ -164,8 +170,11 @@ class TestMultiprocess(unittest.TestCase):
         B_expected[2].append(ali)
 
         # compute actual backtraces using the standard edit distance
-        B_actual = multiprocess.pairwise_backtraces(Xs, Xs, dist_backtrace = standard_sed_backtrace)
+        B_actual = multiprocess.pairwise_backtraces(
+            Xs, Xs, dist_backtrace=standard_sed_backtrace
+        )
         self.assertEqual(B_expected, B_actual)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,7 @@ Implements tree edits, i.e. functions which take a tree as input and
 return a changed tree.
 
 """
+
 # Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
@@ -25,20 +26,19 @@ import abc
 import copy
 from edist.ted import outermost_right_leaves
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.2'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 class Edit(abc.ABC):
-    """ An abstract parent class for all edits.
+    """An abstract parent class for all edits."""
 
-    """
     @abc.abstractmethod
     def apply(self, nodes, adj):
-        """ Applies this edit to the given tree and returns a copy of the tree
+        """Applies this edit to the given tree and returns a copy of the tree
         with the applied changes. The original tree remains unchanged.
 
         Parameters
@@ -60,7 +60,7 @@ class Edit(abc.ABC):
 
     @abc.abstractmethod
     def apply_in_place(self, nodes, adj):
-        """ Applies this edit to the given tree. Note that this changes the
+        """Applies this edit to the given tree. Note that this changes the
         input arguments.
 
         Parameters
@@ -75,7 +75,7 @@ class Edit(abc.ABC):
 
 
 class Replacement(Edit):
-    """ Replaces the label of node self._index with self._label.
+    """Replaces the label of node self._index with self._label.
 
     Attributes
     ----------
@@ -85,12 +85,13 @@ class Replacement(Edit):
         The new label for the self._indexth node.
 
     """
+
     def __init__(self, index, label):
         self._index = index
         self._label = label
 
     def apply(self, nodes_orig, adj):
-        """ Replaces the label of node self._index with self._label.
+        """Replaces the label of node self._index with self._label.
 
         Parameters
         ----------
@@ -112,7 +113,7 @@ class Replacement(Edit):
         return nodes, adj
 
     def apply_in_place(self, nodes, adj):
-        """ Replaces the label of node self._index with self._label.
+        """Replaces the label of node self._index with self._label.
 
 
         Parameters
@@ -126,17 +127,21 @@ class Replacement(Edit):
         nodes[self._index] = self._label
 
     def __repr__(self):
-        return 'rep(%d, %s)' % (self._index, str(self._label))
+        return "rep(%d, %s)" % (self._index, str(self._label))
 
     def __str__(self):
         return self.__repr__()
 
     def __eq__(self, other):
-        return isinstance(other, Replacement) and self._index == other._index and self._label == other._label
+        return (
+            isinstance(other, Replacement)
+            and self._index == other._index
+            and self._label == other._label
+        )
 
 
 class Deletion(Edit):
-    """ Deletes node self._index and raises all its children to the parent
+    """Deletes node self._index and raises all its children to the parent
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
@@ -146,11 +151,12 @@ class Deletion(Edit):
         The index of the tree node to which this edit is applied.
 
     """
+
     def __init__(self, index):
         self._index = index
 
     def apply(self, nodes_orig, adj_orig):
-        """ Deletes node self._index and raises all its children to the parent
+        """Deletes node self._index and raises all its children to the parent
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
@@ -170,12 +176,12 @@ class Deletion(Edit):
 
         """
         nodes = copy.copy(nodes_orig)
-        adj   = copy.deepcopy(adj_orig)
+        adj = copy.deepcopy(adj_orig)
         self.apply_in_place(nodes, adj)
         return nodes, adj
 
     def apply_in_place(self, nodes, adj):
-        """ Deletes node self._index and raises all its children to the parent
+        """Deletes node self._index and raises all its children to the parent
         node. Note that deleting the root node of the tree results in a
         forest instead of a tree.
 
@@ -192,9 +198,9 @@ class Deletion(Edit):
         # correct all adjacency list entries. First, we must raise
         # the children of index to the parent of index
         for i in range(len(adj)):
-            if(self._index in adj[i]):
+            if self._index in adj[i]:
                 j = adj[i].index(self._index)
-                adj[i] = adj[i][:j] + adj[self._index] + adj[i][j+1:]
+                adj[i] = adj[i][:j] + adj[self._index] + adj[i][j + 1 :]
                 break
         # next we must remove the index'th entry of the adjacency list
         del adj[self._index]
@@ -202,11 +208,11 @@ class Deletion(Edit):
         # bigger than index
         for i in range(len(adj)):
             for j in range(len(adj[i])):
-                if(adj[i][j] > self._index):
+                if adj[i][j] > self._index:
                     adj[i][j] -= 1
 
     def __repr__(self):
-        return 'del(%d)' % (self._index)
+        return "del(%d)" % (self._index)
 
     def __str__(self):
         return self.__repr__()
@@ -216,7 +222,7 @@ class Deletion(Edit):
 
 
 def get_roots(adj):
-    """ Returns all roots of a forest, described by an adjacency list.
+    """Returns all roots of a forest, described by an adjacency list.
 
     Parameters
     ----------
@@ -237,13 +243,13 @@ def get_roots(adj):
     # test which nodes have no parents; those are the roots
     roots = []
     for i in range(len(adj)):
-        if(p[i] < 0):
+        if p[i] < 0:
             roots.append(i)
     return roots
 
 
 class Insertion(Edit):
-    """ Inserts a new node with label self._label as self._child_index'th
+    """Inserts a new node with label self._label as self._child_index'th
         child of node self._parent_index and uses the next self._num_children
         right siblings of itself as its children.
 
@@ -259,14 +265,15 @@ class Insertion(Edit):
         The number of right siblings that will be used as new grandchildren.
 
     """
-    def __init__(self, parent_index, child_index, label, num_children = 0):
+
+    def __init__(self, parent_index, child_index, label, num_children=0):
         self._parent_index = parent_index
         self._label = label
         self._child_index = child_index
         self._num_children = num_children
 
     def apply(self, nodes_orig, adj_orig):
-        """ Inserts a new node with label self._label as self._child_index'th
+        """Inserts a new node with label self._label as self._child_index'th
         child of node self._parent_index and uses the next self._num_children
         right siblings of itself as its children.
 
@@ -289,12 +296,12 @@ class Insertion(Edit):
 
         """
         nodes = copy.copy(nodes_orig)
-        adj   = copy.deepcopy(adj_orig)
+        adj = copy.deepcopy(adj_orig)
         self.apply_in_place(nodes, adj)
         return nodes, adj
 
     def apply_in_place(self, nodes, adj):
-        """ Inserts a new node with label self._label as self._child_index'th
+        """Inserts a new node with label self._label as self._child_index'th
         child of node self._parent_index and uses the next self._num_children
         right siblings of itself as its children.
 
@@ -314,18 +321,18 @@ class Insertion(Edit):
         c = self._child_index
         C = self._num_children
 
-        if(p < 0):
+        if p < 0:
             # first, handle the special case that we want to insert a new node
             # at the root of the tree, resulting in a forest
             # retrieve the current roots
             roots = get_roots(adj)
             # get the index of the current self._child_index'th root, which
             # will be the index of our new node
-            if(c < len(roots)):
+            if c < len(roots):
                 idx = roots[c]
                 # use the self._num_children next roots as children of our new
                 # node
-                children = roots[c:(c+C)]
+                children = roots[c : (c + C)]
             else:
                 # if this child does not exist yet, append at the end
                 idx = len(nodes)
@@ -333,19 +340,19 @@ class Insertion(Edit):
         else:
             # if our parent exists, get the index of its self._child_index'th
             # child, which will be the index of our new node
-            if(c < len(adj[p])):
+            if c < len(adj[p]):
                 idx = adj[p][c]
                 # use the self._num_children right siblings as children of our new
                 # node
-                children = adj[p][c:(c+C)]
-                del adj[p][c:(c+C)]
+                children = adj[p][c : (c + C)]
+                del adj[p][c : (c + C)]
             else:
                 # if this child does not exist yet, use the index of the
                 # right sibling of the parent node
                 # this index can be retrieved by first getting the outermost
                 # right leaf of p.
                 orl = p
-                while(adj[orl]):
+                while adj[orl]:
                     orl = adj[orl][-1]
                 # and then incrementing it by 1
                 idx = orl + 1
@@ -359,31 +366,41 @@ class Insertion(Edit):
         # increment all indices >= idx
         for i in range(len(adj)):
             for j in range(len(adj[i])):
-                if(adj[i][j] >= idx):
+                if adj[i][j] >= idx:
                     adj[i][j] += 1
         # decrement the actual new index again
-        if(p >= 0):
+        if p >= 0:
             adj[p][c] -= 1
 
     def __repr__(self):
-        return 'ins(%d, %d, %s, %d)' % (self._parent_index, self._child_index, self._label, self._num_children)
+        return "ins(%d, %d, %s, %d)" % (
+            self._parent_index,
+            self._child_index,
+            self._label,
+            self._num_children,
+        )
 
     def __str__(self):
         return self.__repr__()
 
     def __eq__(self, other):
-        return isinstance(other, Insertion) and self._parent_index == other._parent_index and self._child_index == other._child_index and self._label == other._label and self._num_children == other._num_children
+        return (
+            isinstance(other, Insertion)
+            and self._parent_index == other._parent_index
+            and self._child_index == other._child_index
+            and self._label == other._label
+            and self._num_children == other._num_children
+        )
 
 
 class Script(list, Edit):
-    """ A list of Edits.
+    """A list of Edits."""
 
-    """
-    def __init__(self, lst = []):
+    def __init__(self, lst=[]):
         list.__init__(self, lst)
 
     def apply(self, nodes_orig, adj_orig):
-        """ Applies all edits in this script.
+        """Applies all edits in this script.
 
 
         Parameters
@@ -402,16 +419,16 @@ class Script(list, Edit):
 
         """
         # if this script is empty, just return the inputs
-        if(not self):
+        if not self:
             return nodes_orig, adj_orig
         # otherwise make a copy and then apply the script in place
         nodes = copy.copy(nodes_orig)
-        adj   = copy.deepcopy(adj_orig)
+        adj = copy.deepcopy(adj_orig)
         self.apply_in_place(nodes, adj)
         return nodes, adj
 
     def apply_in_place(self, nodes, adj):
-        """ Applies all edits in this script.
+        """Applies all edits in this script.
 
         Parameters
         ----------
@@ -426,7 +443,7 @@ class Script(list, Edit):
 
 
 def alignment_to_script(alignment, x_nodes, x_adj, y_nodes, y_adj):
-    """ Converts the given alignment into an edit script which maps the given
+    """Converts the given alignment into an edit script which maps the given
     tree x to the given tree y such that all tuples in the alignment
     correspond to exactly one edit in the script.
 
@@ -466,12 +483,12 @@ def alignment_to_script(alignment, x_nodes, x_adj, y_nodes, y_adj):
     dels = []
     inss = []
     for op in alignment:
-        if(op._left >= 0):
-            if(op._right >= 0):
+        if op._left >= 0:
+            if op._right >= 0:
                 # if both left and right index are defined, we have a
                 # a replacement that we can convert right away.
                 # We ignore replacements that change nothing, though.
-                if(x_nodes[op._left] != y_nodes[op._right]):
+                if x_nodes[op._left] != y_nodes[op._right]:
                     script.append(Replacement(op._left, y_nodes[op._right]))
             else:
                 # if only the left index is defined, we have a deletion
@@ -508,7 +525,7 @@ def alignment_to_script(alignment, x_nodes, x_adj, y_nodes, y_adj):
 
 
 def num_descendants(adj, filter_set):
-    """ Counts the number of descendants of each node which are _not_ members
+    """Counts the number of descendants of each node which are _not_ members
     of the given filter set.
 
     Parameters
@@ -529,6 +546,7 @@ def num_descendants(adj, filter_set):
     _num_descendants(adj, filter_set, 0, out)
     return out
 
+
 def _num_descendants(adj, filter_set, i, out):
     # add a counting variable for the number of descendants for the current node
     out.append(0)
@@ -537,7 +555,7 @@ def _num_descendants(adj, filter_set, i, out):
         # call this method recursively for the child
         _num_descendants(adj, filter_set, j, out)
         # check if the current child is in the filter set
-        if(j in filter_set):
+        if j in filter_set:
             # if it is, add the number of descendants of the child
             out[i] += out[j]
         else:

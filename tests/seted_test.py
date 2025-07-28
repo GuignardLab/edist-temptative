@@ -26,53 +26,74 @@ import numpy as np
 from edist.alignment import Alignment
 import edist.seted as seted
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.0'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 class TestSetED(unittest.TestCase):
 
     def test_seted(self):
         x = []
         y = []
-        expected = 0.
+        expected = 0.0
         actual = seted.seted(x, y)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
 
-        x = ['a', 'b', 'c']
+        x = ["a", "b", "c"]
         y = []
-        expected = 3.
+        expected = 3.0
         actual = seted.seted(x, y)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
         actual = seted.seted(y, x)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
 
-        y = ['c', 'd', 'd', 'b']
-        expected = 2.
+        y = ["c", "d", "d", "b"]
+        expected = 2.0
         actual = seted.seted(x, y)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
         actual = seted.seted(y, x)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
 
         def custom_delta(x, y):
-            if(x == y):
-                return 0.
-            elif (x == 'a' and y is not None) or (y == 'a' and x is not None):
-                return 5.
+            if x == y:
+                return 0.0
+            elif (x == "a" and y is not None) or (y == "a" and x is not None):
+                return 5.0
             else:
-                return 1.
+                return 1.0
 
-        expected = 3.
+        expected = 3.0
         actual = seted.seted(x, y, delta=custom_delta)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
         actual = seted.seted(y, x, delta=custom_delta)
-        self.assertTrue(np.abs(expected - actual) < 1E-3, 'Expected %g but got %g' % (expected, actual))
+        self.assertTrue(
+            np.abs(expected - actual) < 1e-3,
+            "Expected %g but got %g" % (expected, actual),
+        )
 
     def test_sed_backtrace(self):
-        x = ['a', 'b', 'c']
+        x = ["a", "b", "c"]
         y = []
 
         expected_ali = Alignment()
@@ -91,7 +112,7 @@ class TestSetED(unittest.TestCase):
         actual_ali = seted.seted_backtrace(y, x)
         self.assertEqual(expected_ali, actual_ali)
 
-        y = ['c', 'd', 'b']
+        y = ["c", "d", "b"]
 
         expected_ali = Alignment()
         expected_ali.append_tuple(0, 1)
@@ -102,12 +123,12 @@ class TestSetED(unittest.TestCase):
         self.assertEqual(expected_ali, actual_ali)
 
         def custom_delta(x, y):
-            if(x == y):
-                return 0.
-            elif (x == 'a' and y is not None) or (y == 'a' and x is not None):
-                return 5.
+            if x == y:
+                return 0.0
+            elif (x == "a" and y is not None) or (y == "a" and x is not None):
+                return 5.0
             else:
-                return 1.
+                return 1.0
 
         expected_ali = Alignment()
         expected_ali.append_tuple(0, -1)
@@ -118,5 +139,6 @@ class TestSetED(unittest.TestCase):
         actual_ali = seted.seted_backtrace(x, y, custom_delta)
         self.assertEqual(expected_ali, actual_ali)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

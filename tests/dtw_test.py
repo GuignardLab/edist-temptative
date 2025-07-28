@@ -27,19 +27,19 @@ import numpy as np
 from edist.alignment import Alignment
 import edist.dtw as dtw
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.0'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
+
 
 class TestDTW(unittest.TestCase):
 
     def test_dtw_numeric(self):
         x = [0, 0, 1, 2]
         y = [0, 1, 1, 3]
-        expected = 1.
+        expected = 1.0
         actual = dtw.dtw_numeric(np.array(x, dtype=float), np.array(y, dtype=float))
         np.testing.assert_almost_equal(actual, expected, 3)
 
@@ -56,19 +56,19 @@ class TestDTW(unittest.TestCase):
         y[:, 1] = np.array([0, 0, 0, 1, 2, 2, 2, 3], dtype=float)
         # if we compare the first and second dimension separately, we expect
         # a distance of 0
-        expected = 0.
+        expected = 0.0
         actual = dtw.dtw_numeric(x[:, 0], y[:, 0]) + dtw.dtw_numeric(x[:, 1], y[:, 1])
         np.testing.assert_almost_equal(actual, expected, 3)
         # but if we compare the manhattan distance, we expect a distance of two
-        expected = 2.
+        expected = 2.0
         actual = dtw.dtw_manhattan(x, y)
         np.testing.assert_almost_equal(actual, expected, 3)
 
         # if we compare single-element sequences, we expect simply the manhattan
         # distance between the entries
-        x = np.array([[0., 0.]])
-        y = np.array([[1., 1.]])
-        expected = 2.
+        x = np.array([[0.0, 0.0]])
+        y = np.array([[1.0, 1.0]])
+        expected = 2.0
         actual = dtw.dtw_manhattan(x, y)
         np.testing.assert_almost_equal(actual, expected, 3)
 
@@ -79,47 +79,47 @@ class TestDTW(unittest.TestCase):
         y[:, 1] = np.array([0, 0, 0, 1, 2, 2, 2, 3], dtype=float)
         # if we compare the first and second dimension separately, we expect
         # a distance of 0
-        expected = 0.
+        expected = 0.0
         actual = dtw.dtw_numeric(x[:, 0], y[:, 0]) + dtw.dtw_numeric(x[:, 1], y[:, 1])
         np.testing.assert_almost_equal(actual, expected, 3)
         # but if we compare the Euclidean distance, we expect a distance of two
-        expected = 2.
+        expected = 2.0
         actual = dtw.dtw_euclidean(x, y)
         np.testing.assert_almost_equal(actual, expected, 3)
 
         # if we compare single-element sequences, we expect simply the Euclidean
         # distance between the entries
-        x = np.array([[0., 0.]])
-        y = np.array([[1., 1.]])
+        x = np.array([[0.0, 0.0]])
+        y = np.array([[1.0, 1.0]])
         expected = np.sqrt(2)
         actual = dtw.dtw_euclidean(x, y)
         np.testing.assert_almost_equal(actual, expected, 3)
 
     def test_dtw_string(self):
-        x = 'aabbccdd'
-        y = 'aaabcccde'
-        expected = 1.
+        x = "aabbccdd"
+        y = "aaabcccde"
+        expected = 1.0
         actual = dtw.dtw_string(x, y)
         np.testing.assert_almost_equal(actual, expected, 3)
 
         def kron_delta(x, y):
-            if(x == y):
-                return 0.
+            if x == y:
+                return 0.0
             else:
-                return 1.
+                return 1.0
 
         actual = dtw.dtw(x, y, delta=kron_delta)
         np.testing.assert_almost_equal(actual, expected, 3)
 
     def test_dtw_backtrace(self):
         def kron_delta(x, y):
-            if(x == y):
-                return 0.
+            if x == y:
+                return 0.0
             else:
-                return 1.
+                return 1.0
 
-        x = 'aaa'
-        y = 'aa'
+        x = "aaa"
+        y = "aa"
 
         expected_ali = Alignment()
         expected_ali.append_tuple(0, 0)
@@ -135,13 +135,13 @@ class TestDTW(unittest.TestCase):
         # expected distribution
 
         def kron_delta(x, y):
-            if(x == y):
-                return 0.
+            if x == y:
+                return 0.0
             else:
-                return 1.
+                return 1.0
 
-        x = 'aa'
-        y = 'aa'
+        x = "aa"
+        y = "aa"
 
         expected_alis = [Alignment(), Alignment(), Alignment()]
         expected_alis[0].append_tuple(0, 0)
@@ -171,13 +171,13 @@ class TestDTW(unittest.TestCase):
     def test_dtw_backtrace_matrix(self):
 
         def kron_delta(x, y):
-            if(x == y):
-                return 0.
+            if x == y:
+                return 0.0
             else:
-                return 1.
+                return 1.0
 
-        x = 'aaa'
-        y = 'aa'
+        x = "aaa"
+        y = "aa"
 
         # set up expected count matrix
         expected_K = np.array([[5, 3, 1], [1, 3, 5]]).T
@@ -189,8 +189,8 @@ class TestDTW(unittest.TestCase):
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 
-        x = 'abc'
-        y = 'aa'
+        x = "abc"
+        y = "aa"
 
         # set up expected count matrix
         expected_K = np.array([[3, 1, 0], [1, 2, 3]]).T
@@ -202,8 +202,8 @@ class TestDTW(unittest.TestCase):
         np.testing.assert_almost_equal(K, expected_K, 2)
         self.assertEqual(expected_k, k)
 
-        x = 'abc'
-        y = 'bc'
+        x = "abc"
+        y = "bc"
 
         # set up expected count matrix
         expected_K = np.array([[1, 1, 0], [0, 0, 1]]).T
@@ -216,5 +216,5 @@ class TestDTW(unittest.TestCase):
         self.assertEqual(expected_k, k)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

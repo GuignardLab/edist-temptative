@@ -2,6 +2,7 @@
 Implements a sequence edit distance with affine gap costs using ADP.
 
 """
+
 # Copyright (C) 2019-2021
 # Benjamin Paaßen
 # AG Machine Learning
@@ -23,26 +24,26 @@ Implements a sequence edit distance with affine gap costs using ADP.
 import numpy as np
 import edist.adp as adp
 
-__author__ = 'Benjamin Paaßen'
-__copyright__ = 'Copyright (C) 2019-2021, Benjamin Paaßen'
-__license__ = 'GPLv3'
-__version__ = '1.2.2'
-__maintainer__ = 'Benjamin Paaßen'
-__email__  = 'bpaassen@techfak.uni-bielefeld.de'
+__author__ = "Benjamin Paaßen"
+__copyright__ = "Copyright (C) 2019-2021, Benjamin Paaßen"
+__license__ = "GPLv3"
+__maintainer__ = "Benjamin Paaßen"
+__email__ = "bpaassen@techfak.uni-bielefeld.de"
 
 # first, define the grammar
-_grammar = adp.Grammar('A', ['A', 'D', 'I'])
-_grammar.append_replacement('A', 'A', 'rep')
-_grammar.append_deletion('A', 'D', 'del')
-_grammar.append_insertion('A', 'I', 'ins')
-_grammar.append_replacement('D', 'A', 'rep')
-_grammar.append_deletion('D', 'D', 'skdel')
-_grammar.append_insertion('D', 'I', 'ins')
-_grammar.append_replacement('I', 'A', 'rep')
-_grammar.append_insertion('I', 'I', 'skins')
+_grammar = adp.Grammar("A", ["A", "D", "I"])
+_grammar.append_replacement("A", "A", "rep")
+_grammar.append_deletion("A", "D", "del")
+_grammar.append_insertion("A", "I", "ins")
+_grammar.append_replacement("D", "A", "rep")
+_grammar.append_deletion("D", "D", "skdel")
+_grammar.append_insertion("D", "I", "ins")
+_grammar.append_replacement("I", "A", "rep")
+_grammar.append_insertion("I", "I", "skins")
+
 
 class AffineAlgebra:
-    """ This is a class to efficiently store an algebra for the affine edit
+    """This is a class to efficiently store an algebra for the affine edit
     distance grammar in a pickleable format.
 
     Attributes
@@ -62,39 +63,40 @@ class AffineAlgebra:
         a constant cost for deletion/insertion extensions.
 
     """
-    def __init__(self, rep = None, gap = 1., skip = 0.5):
-        if(rep is None):
+
+    def __init__(self, rep=None, gap=1.0, skip=0.5):
+        if rep is None:
             self._rep = self._kron
         else:
             self._rep = rep
-        if(not callable(gap)):
+        if not callable(gap):
             self._gap = self._gap_const
             self._gap_cost = gap
         else:
             self._gap = gap
-        if(not callable(skip)):
+        if not callable(skip):
             self._skip = self._skip_const
             self._skip_cost = skip
         else:
             self._skip = skip
 
     def __getitem__(self, key):
-        if(key == 'rep'):
+        if key == "rep":
             return self._rep
-        if(key == 'del' or key == 'ins'):
+        if key == "del" or key == "ins":
             return self._gap
-        if(key == 'skdel' or key == 'skins'):
+        if key == "skdel" or key == "skins":
             return self._skip
-        raise ValueError('Unsupported key: %s' % str(key))
+        raise ValueError("Unsupported key: %s" % str(key))
 
     def __contains__(self, item):
-        return item in ['rep', 'del', 'ins', 'skdel', 'skins']
+        return item in ["rep", "del", "ins", "skdel", "skins"]
 
     def _kron(self, x, y):
-        if(x == y):
-            return 0.
+        if x == y:
+            return 0.0
         else:
-            return 1.
+            return 1.0
 
     def _gap_const(self, x, y):
         return self._gap_cost
@@ -102,8 +104,9 @@ class AffineAlgebra:
     def _skip_const(self, x, y):
         return self._skip_cost
 
-def aed(x, y, rep = None, gap = 1., skip = 0.5):
-    """ Computes the affine edit distance using algebraic dynamic programming.
+
+def aed(x, y, rep=None, gap=1.0, skip=0.5):
+    """Computes the affine edit distance using algebraic dynamic programming.
 
     Parameters
     ----------
@@ -130,14 +133,15 @@ def aed(x, y, rep = None, gap = 1., skip = 0.5):
         The affine edit distance between x and y.
 
     """
-    if(isinstance(rep, AffineAlgebra)):
+    if isinstance(rep, AffineAlgebra):
         algebra = rep
     else:
         algebra = AffineAlgebra(rep, gap, skip)
     return adp.edit_distance(x, y, _grammar, algebra)
 
-def aed_backtrace(x, y, rep = None, gap = 1., skip = 0.5):
-    """ Computes the backtrace of the affine edit distance using algebraic
+
+def aed_backtrace(x, y, rep=None, gap=1.0, skip=0.5):
+    """Computes the backtrace of the affine edit distance using algebraic
     dynamic programming.
 
     Parameters
@@ -166,14 +170,15 @@ def aed_backtrace(x, y, rep = None, gap = 1., skip = 0.5):
         distance.
 
     """
-    if(isinstance(rep, AffineAlgebra)):
+    if isinstance(rep, AffineAlgebra):
         algebra = rep
     else:
         algebra = AffineAlgebra(rep, gap, skip)
     return adp.backtrace(x, y, _grammar, algebra)
 
-def aed_backtrace_stochastic(x, y, rep = None, gap = 1., skip = 0.5):
-    """ Computes the backtrace of the affine edit distance using algebraic
+
+def aed_backtrace_stochastic(x, y, rep=None, gap=1.0, skip=0.5):
+    """Computes the backtrace of the affine edit distance using algebraic
     dynamic programming stochastically.
 
     Note that the randomness does _not_ produce a uniform distribution over
@@ -207,14 +212,15 @@ def aed_backtrace_stochastic(x, y, rep = None, gap = 1., skip = 0.5):
         distance.
 
     """
-    if(isinstance(rep, AffineAlgebra)):
+    if isinstance(rep, AffineAlgebra):
         algebra = rep
     else:
         algebra = AffineAlgebra(rep, gap, skip)
     return adp.backtrace_stochastic(x, y, _grammar, algebra)
 
-def aed_backtrace_matrix(x, y, rep = None, gap = 1., skip = 0.5):
-    """ Computes the backtrace matrix P of the affine edit distance using
+
+def aed_backtrace_matrix(x, y, rep=None, gap=1.0, skip=0.5):
+    """Computes the backtrace matrix P of the affine edit distance using
     algebraic dynamic programming.
 
     In particular, P[i, j] contains the probability of node i being replaced
@@ -252,15 +258,15 @@ def aed_backtrace_matrix(x, y, rep = None, gap = 1., skip = 0.5):
         The number of co-optimal alignments.
 
     """
-    if(isinstance(rep, AffineAlgebra)):
+    if isinstance(rep, AffineAlgebra):
         algebra = rep
     else:
         algebra = AffineAlgebra(rep, gap, skip)
     P_rep, P_del, P_ins, k = adp.backtrace_matrix(x, y, _grammar, algebra)
     # re-format the matrices
     P = np.zeros((len(x) + 2, len(y) + 2))
-    P[:len(x), :][:, :len(y)] = P_rep[0, :, :]
-    P[:len(x), len(y):] = P_del.T
-    P[len(x):, :len(y)] = P_ins
+    P[: len(x), :][:, : len(y)] = P_rep[0, :, :]
+    P[: len(x), len(y) :] = P_del.T
+    P[len(x) :, : len(y)] = P_ins
     # return the result
     return P, k

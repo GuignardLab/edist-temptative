@@ -32,7 +32,6 @@ cimport cython
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2021, Benjamin Paaßen'
 __license__ = 'GPLv3'
-__version__ = '1.2.2'
 __maintainer__ = 'Benjamin Paaßen'
 __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 
