@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edist"
-version = "1.2.2"
+version = "1.2.3"
 authors = [{ name = "Benjamin Paassen", email = "bpaassen@techfak.uni-bielefeld.de" }]
 description = "Edit distance implementations in cython"
 readme = "README.md"
@@ -53,7 +53,7 @@ ext-modules = [
 ]
 
 [tool.bumpver]
-current_version = "1.2.2"
+current_version = "1.2.3"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
