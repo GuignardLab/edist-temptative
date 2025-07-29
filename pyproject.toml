@@ -9,7 +9,7 @@ authors = [{ name = "Benjamin Paassen", email = "bpaassen@techfak.uni-bielefeld.
 description = "Edit distance implementations in cython"
 readme = "README.md"
 license = "GPL-3.0-or-later"
-license-files = [ "LICENSE.MD" ]
+license-files = [ "LICENSE.md" ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
